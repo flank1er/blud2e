@@ -6,6 +6,7 @@
 */
 
 #include <map>
+#include <vector>
 #include <set>
 #include <glm/glm.hpp>
 #include <typeinfo>
@@ -20,6 +21,7 @@
 #define lastSprite spV.at(spV.size()-1)
 
 
+bool fileExists(const char*);
 
 template<class InputIterator, class Function>
 Function for_loop(InputIterator first, Function fn)
@@ -315,7 +317,7 @@ class  unionWall : public Wall, public xWall {
 
 struct LOOP {
     std::vector<unionWall>::iterator marker;
-    LOOP() {proper=inner=loop=rectangle=false;};
+    LOOP() {proper=inner=loop=rectangle=generic=false;};
     ~LOOP() {};
     bool property(std::string req)
     {

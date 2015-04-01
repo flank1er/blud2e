@@ -5,157 +5,131 @@
    License: GPL v.3
 */
 
-#include <vector>
 #include <iostream>
 #include <string>
-#include <map>
-#include <sys/stat.h> // check that file exists
 #include <blud2e.h>
 
-
-bool fileExists(const std::string& filename);
 void show_help_message();
 
 int main(int argc, char *argv[]) {
-	std::string tex_con_file="defs.con";
-	std::string sound_con_file="sounds.con";
-	std::string original_sound="sounds_old.con";
-	std::string pic_file="pic_table.con";
+    const char* tex_con_file="defs.con";
+    const char* sound_con_file="sounds.con";
+    const char* original_sound="sounds_old.con";
+    const char* pic_file="pic_table.con";
 
-	Map map;
-
-	const float version=0.6;
-	int infoSector;
+    Map map; const float version=0.7; int infoSector;
+    std::string mode="blank"; char * blood_filemap;  char * duke_filemap;
 
 	std::cerr << "\nDecryptor MAP files from Blood video game, Monolith Production, 1997(c)\n" << \
 	"Author: flanker\n" << \
 	"Project: Blood Crossmatching\n" << \
 	"version: " << version << "-dev" << std::endl << \
 	"====================================================\n\n";
-	std::string mode("blank");
-	std::vector<std::string> arguments;
-	for (int i=1; i<argc;i++){
-		std::string arg(argv[i]);
-		arguments.push_back(arg);
-	};
+    ////////////////////////////////////////////////
+    ////  parsing command line arguments
+    /// ////////////////////////////////////////////
+    if (argc < 3 || argc > 5)
+    {
+        show_help_message();
+        return EXIT_FAILURE;
+    }
 
-	char * blood_filemap;
-	char * duke_filemap;
-
-	if (arguments.size() == 2) {
-		if (!fileExists(arguments[1]))
-		{
-            std::cout << "ERROR: file: " << arguments[1] << " doesn't exist!" << std::endl;
-            exit(EXIT_FAILURE);
+    if (argc == 3)
+    {
+        if (!fileExists(argv[2]))
+        {
+            std::cout << "ERROR: file: " << argv[2] << " doesn't exist!" << std::endl;
+            return EXIT_FAILURE;
         };
-		blood_filemap = (char*)arguments[1].c_str();
-
-		if ( arguments[0] == "-i" || arguments[0] == "--info" ) {
+        blood_filemap = argv[2];
+        if ( std::string(argv[1]) == "-i" || std::string(argv[1]) == "--info" )
                 mode="info";
-		};
-        if ( arguments[0] == "-e" || arguments[0] == "--export" ) {
+        else if ( std::string(argv[1]) == "-e" || std::string(argv[1]) == "--export" )
                 mode="export";
-		};
+        infoSector=-1;
+    };
 
-		infoSector=-1;
-	};
-
-
-	if (arguments.size() == 3) {
-		if (arguments[0] == "-c" || arguments[0] == "--convert" ) {
-			if (!fileExists(arguments[1]))
+    if (argc == 4)
+    {
+        if ( std::string(argv[1]) == "-c" || std::string(argv[1]) == "--convert" )
+        {
+            if (!fileExists(argv[2]))
 			{
-                std::cout << "ERROR: file: " << arguments[1] << " doesn't exist!" << std::endl;
-                exit(EXIT_FAILURE);
+                std::cout << "ERROR: file: " << argv[2] << " doesn't exist!" << std::endl;
+                return EXIT_FAILURE;
             };
+            blood_filemap = argv[2]; duke_filemap  = argv[3];mode="convert";
 
-			blood_filemap = (char*)arguments[1].c_str();
-			duke_filemap = (char*)arguments[2].c_str();
-			mode="convert";
-
-		};
-		if ( arguments[0] == "-i" || arguments[0] == "--info" ) {
-			if (!fileExists(arguments[2]))
-				exit(EXIT_FAILURE);
-			infoSector=atoi(arguments[1].c_str());
-			blood_filemap = (char*)arguments[2].c_str();
-			mode="info";
+        };
+        if ( std::string(argv[1]) == "-i" || std::string(argv[1]) == "--info" ) {
+            if (!fileExists(argv[3]))
+            {
+                std::cout << "ERROR: file: " << argv[3] << " doesn't exist!" << std::endl;
+                return EXIT_FAILURE;
+            }
+            infoSector=atoi(argv[2]); blood_filemap = argv[3]; mode="info";
 		};
 
-		if ( arguments[0] == "-e" || arguments[0] == "--export" ) {
-			if (!fileExists(arguments[1]))
+        if ( std::string(argv[1]) == "-e" || std::string(argv[1]) == "--export" ) {
+            if (!fileExists(argv[2]))
 			{
-                std::cout << "ERROR: file: " << arguments[1] << " doesn't exist!" << std::endl;
-                exit(EXIT_FAILURE);
+                std::cout << "ERROR: file: " << argv[2] << " doesn't exist!" << std::endl;
+                return EXIT_FAILURE;
             };
-            infoSector=-1;
-			blood_filemap = (char*)arguments[1].c_str();
-			duke_filemap=(char*)arguments[2].c_str();
-			mode="export";
-		};
-	};
+            infoSector=-1; blood_filemap = argv[2];	duke_filemap=argv[3]; mode="export";
+        };
+    };
 
-    if ((arguments.size() == 4) && ( arguments[0] == "-e" || arguments[0] == "--export" )) {
-            if (!fileExists(arguments[2]))
+    if ((argc == 5) && ( std::string(argv[1]) == "-e" || std::string(argv[1]) == "--export" ))
+    {
+            if (!fileExists(argv[3]))
 			{
-                std::cout << "ERROR: file: " << arguments[2] << " doesn't exist!" << std::endl;
-                exit(EXIT_FAILURE);
+                std::cout << "ERROR: file: " << argv[3] << " doesn't exist!" << std::endl;
+                return EXIT_FAILURE;
             };
-            infoSector=atoi(arguments[1].c_str());
-            blood_filemap = (char*)arguments[2].c_str();
-			duke_filemap=(char*)arguments[3].c_str();
+            infoSector=atoi(argv[2]); blood_filemap = argv[3]; duke_filemap=argv[4];
 			mode="export";
     };
 
-	if (mode == "blank" ) {
-		show_help_message();
-		exit(EXIT_FAILURE);
-	};
 
-	if (!fileExists(tex_con_file) || !fileExists(sound_con_file) ||
-        !fileExists(original_sound) || !fileExists(pic_file)) {
+    if (!fileExists(tex_con_file) || !fileExists(sound_con_file) || !fileExists(original_sound) || !fileExists(pic_file))
+    {
 		std::cerr << "ERROR: missing files: sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
-	       	exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
 	};
 
-
-// C O R E ///////////////////////////////
-	assert (map.sTable.open(original_sound ,sound_con_file, tex_con_file) >= 0);
-    assert (map.openPicsTable(pic_file, map.targa) >= 0 );
+/// C O R E ///////////////////////////////
+    if ((map.sTable.open(original_sound ,sound_con_file, tex_con_file) < 0) || (map.openPicsTable(pic_file, map.targa) < 0))
+    {
+        std::cerr << "ERROR: couldn't open files: sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
+        return EXIT_FAILURE;
+    }
 
 	map.read(blood_filemap);
-/////////////
-	//exit(EXIT_SUCCESS);
+
 
     if (mode == "export")
         map.extract(infoSector, duke_filemap);
-	else if ((mode == "info" || mode == "duke_map_info") && arguments.size() == 2 )
+    else if ((mode == "info" || mode == "duke_map_info") && argc == 3 )
 		map.show();
 	else if (mode == "info")
 		map.printSector(infoSector, true);
 	else if ( mode == "convert" )
 	{
         map.scale=0.75f;
-        map.processing();
-        assert(map.write(duke_filemap) >=0);
+        map.processing(); // C O N V E R S I O N
+        if (map.write(duke_filemap) <0)
+        {
+            std::cerr << "ERROR: couldn't write file : sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
+            return EXIT_FAILURE;
+        }
     };
-// CORE OUT ////////////////////////////////////
 
-    //map.rm();
-	exit(EXIT_SUCCESS);
+    return 0;
 };
 
-bool fileExists(const std::string& filename)
+void show_help_message()
 {
-    struct stat buf;
-    if (stat(filename.c_str(), &buf) != -1)
-    {
-        return true;
-    }
-    return false;
-};
-
-void show_help_message() {
 	std::cout \
 	<< "Syntax: blud2e -c  <Blood MAP file> <BloodCM MAP file>" << std::endl
 	<< "or:" << std::endl

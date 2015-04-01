@@ -18,6 +18,7 @@
 #include <blud2e.h>
 #include <cassert>
 #include <glm/gtc/matrix_transform.hpp>
+#include <sys/stat.h> // check that file exists
 
 const int size_signature=6;
 const int size_firstHeader=18;
@@ -48,6 +49,16 @@ struct thirdHeader {
 	short numSectors;
 	short numWalls;
 	short numSprites;
+};
+
+bool fileExists(const char* filename)
+{
+    struct stat buf;
+    if (stat(filename, &buf) != -1)
+    {
+        return true;
+    }
+    return false;
 };
 
 int DecryptBuffer (unsigned char* Buffer, const size_t DataSize, unsigned char DecryptKey) {
@@ -705,7 +716,7 @@ int soundTable::open(std::string source_file, std::string target_file, std::stri
 		w.erase(w.begin(), w.end());
     } else
     {
-        std::cerr << "ERROR: can't open file: " << filename << std::endl;
+        //std::cerr << "ERROR: can't open file: " << filename << std::endl;
         return -1;
     };
 	};
@@ -762,7 +773,7 @@ int Map::openPicsTable(std::string filename, std::map<int, glm::ivec2> &table){
             w.erase(w.begin(), w.end());
         } else
         {
-            std::cerr << "ERROR: can't open file: " << filename << std::endl;
+            //std::cerr << "ERROR: can't open file: " << filename << std::endl;
             return -1;
         };
     return 0;

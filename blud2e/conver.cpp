@@ -1221,7 +1221,7 @@ int Map::prepare()
 
             if ((int)ns.size() == 1 && ns.count(-1))
                 K.set_property("loop");
-            if ((int)ns.size() == 1 && !ns.count (-1) && K.property("generic"))
+            if ((int)ns.size() == 1 && !ns.count(-1) && K.property("generic"))
                 K.set_property("inner");
             if ((int)dots.size() == 1 && T.wallnum == 4  && dots.count(0))
                 K.set_property("rectangle");
@@ -1237,6 +1237,8 @@ int Map::prepare()
                 K.set_property("proper");
         };
     };
+
+
     return 0;
 };
 
@@ -1281,6 +1283,7 @@ int Map::finish()
 
 int Map::processing() {
     prepare();
+
     std::cout << "Start processing..." << std::endl;
 
     for (auto& T : spV)
@@ -1346,6 +1349,7 @@ int Map::processing() {
 
     makeController();
     makeTROR();
+
     check();
 
     std::set<int> the_list={};
