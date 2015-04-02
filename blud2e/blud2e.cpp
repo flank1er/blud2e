@@ -116,8 +116,7 @@ int main(int argc, char *argv[]) {
 		map.printSector(infoSector, true);
 	else if ( mode == "convert" )
 	{
-        map.scale=0.75f;
-        map.processing(); // C O N V E R S I O N
+        map.processing(1.f); // C O N V E R S I O N
         if (map.write(duke_filemap) <0)
         {
             std::cerr << "ERROR: couldn't write file : sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;

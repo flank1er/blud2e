@@ -409,7 +409,7 @@ class  unionSprite : public Sprite, public xSprite {
         void makeWaterDripGen() {texture_id=6382;};
         void makeFootTraces() {cstat &= ~(1<<9);};
         void makeHiddenExploder(){tag.r=waitTime*10;};
-        void makeCstat();
+        //void makeCstat();
 };
 
 struct soundTable {
@@ -427,6 +427,7 @@ class Map {
 private:
     dukeMap dh;
 	int lengthMap, Revision=-1; //, posX,posY, posZ;
+    float scale=1.f;
     void showInfo();
 
 	std::vector<unionSector> sV;
@@ -434,6 +435,7 @@ private:
 	std::vector<unionSprite> spV;
 
     int addSprite(int, int, int,std::string, glm::vec4);
+    void Cstat();
     void makeEnemies();
     void makeSectorSFX(unionSprite& Sp);
     void makeRespawn(unionSprite& Sp);
@@ -453,7 +455,7 @@ private:
 
 public:
 //std::map<std::string, int> SecNametoNumber;
-    float scale=1.f;
+
 	soundTable sTable;
 	std::map<int, glm::ivec2> targa;
 	int openPicsTable(std::string filename, std::map<int, glm::ivec2> &table);
@@ -462,7 +464,7 @@ public:
 	int write (char *filename);
 	int prepare();
 	int finish();
-	int processing();
+    int processing(const float);
 	void show();
 	int extract(int, char*filename);
 	int check();

@@ -964,26 +964,54 @@ int unionSprite::makeAmbient(int musicID, int radius)
         return 0;
 };
 
-void unionSprite::makeCstat()
+void Map::Cstat()
 {
-    std::set<int> deads={6026};
-    std::set<int> bottle={5622, 5724, 5725, 5726, 5879, 5724, 5922, 7640, 5690, 5};
-    // if it's dead
-    if( deads.count(texture_id))
-        return;
 
-    if (bottle.count(texture_id))
+    for (auto& T: spV)
     {
-        cstat &=~(1<<7);
-        return;
-    };
+        std::set<int> bottle={
+            5,
+            5622,
+            5690,
+            5724,
+            5725,
+            5726,
+            5879,
+            5724,
+            5737,
+            5922,
+            7640
+        }; // disable Central Orientation
+        std::set<int> getDown={
+            5809,
+            5810,
+            6026,
+            6035
+        };
 
-    // if sprite is floor or wall aligned
-    if ((cstat & (1<<5)) || ((cstat & (1<<4)) && z != inSector->ceilingz && z != inSector->floorz))
-        return;
+        if (bottle.count(T.texture_id))
+        {
+            T.cstat &=~(1<<7);
+            continue;
+        };
 
-    pos.z=inSector->floor.z;
-    cstat &=~(1<<7);
+        glm::ivec2 size=targa[T.texture_id];
+        int edge=size.y*2*T.yrepeat;
+
+        if (getDown.count(T.texture_id))
+        {
+            T.pos.z+=edge;
+            continue;
+        };
+
+        // if sprite is floor or wall aligned
+        if ((T.cstat & (1<<5)) || ((T.cstat & (1<<4)) && T.z != T.inSector->ceilingz && T.z != T.inSector->floorz))
+            continue;
+
+        T.pos.z=T.inSector->floor.z;
+        T.cstat &=~(1<<7);
+    }
+
 };
 
 void Map::makeEnemies()
@@ -1281,7 +1309,8 @@ int Map::finish()
     return 0;
 };
 
-int Map::processing() {
+int Map::processing(const float scope=1.f) {
+    scale=scope;
     prepare();
 
     std::cout << "Start processing..." << std::endl;
@@ -1310,11 +1339,12 @@ int Map::processing() {
         //else if (T.isType("Explode Object")|| (T.isType("Gib Object") && !(T.cstat & 0x01) && T.texture_id != 5778 ))
         //    makeExplodeAndGib(T);
 
-        T.makeCstat();
+//        T.makeCstat();
 
         if (T.dropId > 0 || T.isType("Dude Spawn"))
             makeRespawn(T);
     };
+    Cstat();
     makeExplodeAndGib();
     makeEnemies();
 
