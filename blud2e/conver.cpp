@@ -37,9 +37,13 @@ class COLLECT
 {
     std::set<int> the_list;
 public:
-    int get_size() {return (int)the_list.size();};
+    int get_size()
+    {
+        return (int)the_list.size();
+    };
+
     void erase(){the_list.erase(the_list.begin(), the_list.end());};
-    void print() { for(auto i: the_list) SC << " " << i;}
+    void print(std::stringstream& refer) { for(auto i: the_list) refer << " " << i;}
     void moveIt(std::vector<unionWall>& walls, std::vector<unionSector>& sectors,
         std::vector<unionSprite>& sprites, glm::vec4& d)
     {
@@ -432,7 +436,7 @@ int Map::addSprite(int room,  int rxChannel, int txChannel ,std::string name, gl
     return 0;
 };
 
-int Map::makeExplosiveSector() {
+int Map::makeExplosiveSector(std::stringstream& refer) {
 	int last=get_done(sV);
     std::set<int> boom_set;
     for(auto& T:sV)
@@ -451,7 +455,7 @@ int Map::makeExplosiveSector() {
         };
     };
 
-    std::cout << "Boom Sectors: "; for(auto T: boom_set) std::cout<< T << " "; std::cout << std::endl;
+    refer << "Boom Sectors: "; for(auto T: boom_set) refer << T << " "; refer << std::endl;
 
     for(auto T: boom_set)
     {
@@ -483,11 +487,11 @@ int Map::makeExplosiveSector() {
     };
 
     int ret =get_done(sV)-last;
-	std::cout << "was done: " << ret << " BOOM Sectors" << std::endl;
+    refer << "was done: " << ret << " BOOM Sectors" << std::endl;
 	return ret;
 };
 
-int Map::makeElevatorSector()
+int Map::makeElevatorSector(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> elevator_set;
@@ -506,14 +510,14 @@ int Map::makeElevatorSector()
             T.done=true;
         };
 
-    std::cout<< std::endl << "Elevator Sectors: "; for(auto T: elevator_set) std::cout<< T << " "; std::cout << std::endl;
+    refer<< std::endl << "Elevator Sectors: "; for(auto T: elevator_set) refer<< T << " "; refer << std::endl;
 
     int ret =get_done(sV)-last;
-	std::cout << "was done: " << ret << " Elevator Sectors" << std::endl;
+    refer << "was done: " << ret << " Elevator Sectors" << std::endl;
 	return ret;
 };
 
-int Map::makeDoomDoors()
+int Map::makeDoomDoors(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> floor_set;
@@ -525,7 +529,7 @@ int Map::makeDoomDoors()
             floor_set.insert(T.refer);
     };
 
-    std::cout<< std::endl << "FloorDoor Sectors: "; for(auto T: floor_set) std::cout<< T << " "; std::cout << std::endl;
+   refer<< std::endl << "FloorDoor Sectors: "; for(auto T: floor_set) refer<< T << " "; refer << std::endl;
     //std::cout<< "CeilingDoor Sectors: "; for(auto T: ceiling_set) std::cout<< T << " "; std::cout << std::endl;
 
     for(auto S: floor_set)
@@ -549,9 +553,9 @@ int Map::makeDoomDoors()
         auto ps=it;
         if (pair_list.size() >0)
         {
-            std::cout<< "pair sector: " << S <<" <-- ";
-            for(auto j: pair_list) std::cout<< j << " ";
-            std::cout << std::endl;
+            refer << "pair sector: " << S <<" <-- ";
+            for(auto j: pair_list) refer << j << " ";
+            refer << std::endl;
             ps=sV.begin() + *pair_list.begin();
         };
 
@@ -586,11 +590,11 @@ int Map::makeDoomDoors()
     };
 
     int ret =get_done(sV)-last;
-	std::cout << "was done: " << ret << " DoomDoor Sectors" << std::endl;
+    refer << "was done: " << ret << " DoomDoor Sectors" << std::endl;
 	return ret;
 };
 
-int Map::makeEnterSensor()
+int Map::makeEnterSensor(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> sectors_set;
@@ -599,8 +603,8 @@ int Map::makeEnterSensor()
         if (T.over && !T.done && !LT && !T.rxID && T.txID >= 100 && T.triggerEnter)
             sectors_set.insert(T.refer);
 
-    std::cout<< std::endl << "EnterTrigger Sectors: ";
-    for(auto T: sectors_set) std::cout<< T << " "; std::cout << std::endl;
+    refer<< std::endl << "EnterTrigger Sectors: ";
+    for(auto T: sectors_set) refer<< T << " "; refer << std::endl;
 
     for(auto T: sectors_set)
     {
@@ -608,30 +612,30 @@ int Map::makeEnterSensor()
         auto targets=findRx(sV, sV.at(T).txID, -1, -1, true);
         int ch=channel(sV.at(T).txID);
 
-        if (targets.size() >0) std::cout << "found link: " << T << " <--> ";
+        if (targets.size() >0) refer << "found link: " << T << " <--> ";
         for(auto S: targets)
         {
             assert(sV.at(S).refer == S);
             static int x=sV.at(S).log.x;
             if (sV.at(S).log.x != x)  // WARNING
-                std::cout << std::endl << " was found collision in logical level: " << T << " <--> " << S<< std::endl;
+                refer << std::endl << " was found collision in logical level: " << T << " <--> " << S<< std::endl;
             if (sV.at(S).done)
                 ch=sV.at(S).log.x;
-            std::cout << S << " ";
+            refer << S << " ";
 
         };
-        if (targets.size()>0) std::cout << std::endl;
+        if (targets.size()>0) refer << std::endl;
         addSprite(T, ch, 0, "PushTrigger");
         sV.at(T).done=true;
         sV.at(T).log=glm::ivec2(0, ch);
     };
 
     int ret =get_done(sV)-last;
-	std::cout << "was done: " << ret << " Trigger Sectors" << std::endl;
+    refer << "was done: " << ret << " Trigger Sectors" << std::endl;
 	return ret;
 };
 
-int Map::makeSlideSector()
+int Map::makeSlideSector(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> sector_list;
@@ -639,8 +643,8 @@ int Map::makeSlideSector()
         if(T.over && !T.done && T.is("Slide"))
             sector_list.insert(T.refer);
 
-    std::cout<< std::endl << "found Slide Sectors: ";
-    for(auto T: sector_list) std::cout<< T << " "; std::cout << std::endl;
+    refer<< std::endl << "found Slide Sectors: ";
+    for(auto T: sector_list) refer<< T << " "; refer << std::endl;
 
     for(auto T: sector_list)
     {
@@ -696,22 +700,22 @@ int Map::makeSlideSector()
     };
 
     int ret =get_done(sV)-last;
-	std::cout << "was done: " << ret << " Slide Sectors" << std::endl;
+    refer << "was done: " << ret << " Slide Sectors" << std::endl;
 	return ret;
 };
 
-int Map::makeController()
+int Map::makeController(std::stringstream& refer)
 {
     int last=get_done(spV);
     std::set<int> the_list;
-    std::cout << std::endl << "Controles was found: ";
+    refer << std::endl << "Controles was found: ";
     for(auto T:spV) if(T.over && !T.done && T.txID>=100 && T.rxID >=100)
     {
-        std::cout << T.refer<< " ";
+        refer << T.refer<< " ";
         the_list.insert(T.refer);
-    }; std::cout<<std::endl;
+    }; refer<<std::endl;
 
-    std::cout << "set controller: ";
+    refer << "set controller: ";
     for(auto T:the_list)
     {
         auto it=spV.begin()+T;
@@ -725,12 +729,12 @@ int Map::makeController()
             rx.erase(0); tx.erase(0);
             if (rx.size() > 1 || tx.size()>1 )
             {
-                std::cout << std::endl << "is collison: " << it->refer << std::endl;
+                refer << std::endl << "is collison: " << it->refer << std::endl;
             } else  if (rx.size() == 1 && tx.size() == 1)
             {
-                std::cout << it->refer << "( ";
-                for(auto i:sensors_list) std::cout << i << " "; std::cout << "-->";
-                for(auto i:activators_list) std::cout << i << " "; std::cout << ") ";
+                refer << it->refer << "( ";
+                for(auto i:sensors_list) refer << i << " "; refer << "-->";
+                for(auto i:activators_list) refer << i << " "; refer << ") ";
 
                 it->texture_id=9117;  // remove this sprite
                 addSprite((it->inSector-sV.begin()), *rx.begin(), *tx.begin(), "SWITCH");
@@ -748,7 +752,7 @@ int Map::makeController()
                         if (!it->launch2) level +=2; if (!it->launch3) level +=4;
                         if (!it->launch4) level +=8; if (!it->launch5) level +=16;
                         addSprite((isTrigger-sV.begin()), isTrigger->log.y, level , "SE60");
-                        std::cout << std::endl << "add sprite SE60 in: " << isTrigger -sV.begin() << " launch level: " <<level;
+                        refer << std::endl << "add sprite SE60 in: " << isTrigger -sV.begin() << " launch level: " <<level;
                     };
                 };
                 it->done=true;
@@ -757,15 +761,15 @@ int Map::makeController()
     };
 
     int ret =get_done(spV)-last;
-	std::cout << std:: endl << "was done: " << ret << " Controllers" << std::endl;
+    refer << std:: endl << "was done: " << ret << " Controllers" << std::endl;
 	return ret;
 };
 
-int Map::makeTROR()
+int Map::makeTROR(std::stringstream& refer)
 {
     std::vector<auxTROR> aux;
     int ret=0;
-    std::cout << std::endl << "ROR sectors was found:";
+    refer << std::endl << "ROR sectors was found:";
     for(auto T:spV) if(T.over && !T.done && T.isType("Upper stack"))
     {
         int s=T.inSector-sV.begin();
@@ -778,9 +782,9 @@ int Map::makeTROR()
             new_el.diff=T.pos-sp.pos; // (Upper - Lower)
             new_el.diff.z=T.inSector->floor.z - sp.inSector->ceiling.z;
             aux.push_back(new_el);
-            std::cout << " ("<< new_el.up<< "<-->" << new_el.down << ")";
+            refer << " ("<< new_el.up<< "<-->" << new_el.down << ")";
         };
-    }; std::cout<<std::endl;
+    }; refer<<std::endl;
 
     for (auto T: aux)
     {
@@ -791,11 +795,11 @@ int Map::makeTROR()
         {
             if (up < down && !up.isBroken(spV))
             {
-                SC << "movement upper sectors:"; up.print(); SC<<SE;
+                refer << "movement upper sectors:"; up.print(refer); refer<<SE;
                 T.diff *=(-1);
             } else if (down <up &&  !down.isBroken(spV))
             {
-                SC<<"movement lower sectors:"; down.print(); SC<<SE;
+                refer<<"movement lower sectors:"; down.print(refer); refer<<SE;
                 down.moveIt(wV, sV, spV, T.diff);
             }
         } else if (up == down && T.diff.z == 0 && (sV.at(T.up).generic->property("inner") || sV.at(T.down).generic->property("inner")))
@@ -803,12 +807,12 @@ int Map::makeTROR()
             auto itS=sV.begin();
             if (sV.at(T.up).generic->property("inner"))
             {
-                SC << "movement upper sectors: " << T.up<<SE;
+                refer << "movement upper sectors: " << T.up<<SE;
                 T.diff *=(-1);
                 itS +=T.up;
             } else if (sV.at(T.down).generic->property("inner"))
             {
-                SC << "movement down sectors: " << T.down<<SE;
+                refer << "movement down sectors: " << T.down<<SE;
                 itS +=T.down;
             };
             assert(itS->loops.size()==1);
@@ -819,13 +823,13 @@ int Map::makeTROR()
             for(auto& S: spV)
                 if (S.inSector == itS)
                     S.pos +=glm::vec4(T.diff.x,T.diff.y,0.f, 0.f);
-        } else { SC << "ERROR: failure TROR processing!" <<SE; continue; };
+        } else { refer << "ERROR: failure TROR processing!" <<SE; continue; };
 
         auto d=sV.begin()+T.down;
         auto u=sV.begin()+T.up;
         assert(d->loops.size() == 1);
         assert(u->loops.size() == 1);
-        if (u->wallnum != d->wallnum){  SC << "ERROR: incorrect amount of wall!" <<SE;  continue;};
+        if (u->wallnum != d->wallnum){  refer << "ERROR: incorrect amount of wall!" <<SE;  continue;};
 
         auto it=u->firstWall;
         auto pair_wall=get_nearest_wall(wV, d->firstWall, it->pos);
@@ -847,11 +851,11 @@ int Map::makeTROR()
         dh.version=9;  // TROR MAP format;
         ret++;
     };
-	std::cout  << "was done: " << ret << " TROR Sectors" << std::endl;
+    refer  << "was done: " << ret << " TROR Sectors" << std::endl;
 	return ret;
 };
 
-int Map::makeRotateSector()
+int Map::makeRotateSector(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> sector_list;
@@ -859,8 +863,8 @@ int Map::makeRotateSector()
         if(it->over && !it->done && it->is("Rotate"))
             sector_list.insert(it-sV.begin());
 
-    std::cout<< std::endl << "found Rotate Sectors: ";
-    for(auto T: sector_list) std::cout<< T << " "; std::cout << std::endl;
+    refer<< std::endl << "found Rotate Sectors: ";
+    for(auto T: sector_list) refer<< T << " "; refer << std::endl;
 
     for(auto T: sector_list)
     {
@@ -885,9 +889,9 @@ int Map::makeRotateSector()
             auto ps=it;
             if (pair_list.size() >0)
             {
-                std::cout<< "pair sector: " << T <<" <-- ";
-                for(auto j: pair_list) std::cout<< j << " ";
-                std::cout << std::endl;
+                refer<< "pair sector: " << T <<" <-- ";
+                for(auto j: pair_list) refer<< j << " ";
+                refer << std::endl;
                 ps=sV.begin() + *pair_list.begin();
             };
 
@@ -897,7 +901,7 @@ int Map::makeRotateSector()
             mrk->texture_id=1;
             if (!it->state)
             {
-                SC<<"Rotate Sector: "<< T <<SE;
+                refer<<"Rotate Sector: "<< T <<SE;
                 mrk->ang *=-1;
                 float a=(M_PI*mrk->ang)/1024.0;
                 for_loop(it->firstWall, [&](unionWall & _s) mutable {
@@ -933,11 +937,11 @@ int Map::makeRotateSector()
         };
     };
     int ret =get_done(sV)-last;
-	std::cout << "was done: " << ret << " Rotate Sectors" << std::endl;
+    refer << "was done: " << ret << " Rotate Sectors" << std::endl;
 	return ret;
 };
 
-int Map::makeSlideDoors()
+int Map::makeSlideDoors(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> sector_list;
@@ -945,13 +949,13 @@ int Map::makeSlideDoors()
         if(it->over && !it->done && it->is("Slide Marked"))
             sector_list.insert(it-sV.begin());
 
-    std::cout<< std::endl << "found Slide Doors: ";
-    for(auto T: sector_list) std::cout<< T << " "; std::cout << std::endl;
+    refer<< std::endl << "found Slide Doors: ";
+    for(auto T: sector_list) refer<< T << " "; refer << std::endl;
 
 
 
     int ret =get_done(sV)-last;
-	std::cout << "was done: " << ret << " Slide Doors" << std::endl;
+    refer << "was done: " << ret << " Slide Doors" << std::endl;
 	return ret;
 };
 
@@ -1309,11 +1313,12 @@ int Map::finish()
     return 0;
 };
 
-int Map::processing(const float scope=1.f) {
+int Map::processing(std::string& ret, const float scope=1.f) {
     scale=scope;
     prepare();
+    std::stringstream buff;
 
-    std::cout << "Start processing..." << std::endl;
+    buff << std::endl << "Start processing..." << std::endl;
 
     for (auto& T : spV)
     {   // parsing picnumber
@@ -1344,7 +1349,9 @@ int Map::processing(const float scope=1.f) {
         if (T.dropId > 0 || T.isType("Dude Spawn"))
             makeRespawn(T);
     };
+
     Cstat();
+
     makeExplodeAndGib();
     makeEnemies();
 
@@ -1364,29 +1371,28 @@ int Map::processing(const float scope=1.f) {
 			dh.X=T.pos.x; dh.Y=T.pos.y; dh.Z=T.pos.z;
 			dh.angle=T.ang;
 			dh.sector=(short)(T.inSector-sV.begin());
-			std::cout << "Start position: " << "X: " << dh.X << " Y: " << dh.Y << " Z: " << dh.Z <<
-                    " Sector: " << dh.sector<< std::endl;
+            buff << "Start position: " << "X: " << dh.X << " Y: " << dh.Y << " Z: " << dh.Z << " Sector: " << dh.sector<< std::endl;
         } else if(T.isType("Hidden Exploder"))
             T.makeHiddenExploder();
 
-    makeExplosiveSector();
-    makeElevatorSector();
-    makeDoomDoors();
-    makeSlideSector();
-    makeEnterSensor();
-    makeRotateSector();
-    makeSlideDoors();
+    makeExplosiveSector(buff);
+    makeElevatorSector(buff);
+    makeDoomDoors(buff);
+    makeSlideSector(buff);
+    makeEnterSensor(buff);
+    makeRotateSector(buff);
+    makeSlideDoors(buff);
 
-    makeController();
-    makeTROR();
+    makeController(buff);
+    makeTROR(buff);
 
-    check();
+    check(buff);
 
     std::set<int> the_list={};
     for (auto T: sV) if (T.over && !T.done && T.lotag) the_list.insert(T.refer);
 
-    std::cout  <<std::endl << "undone sectors: ";
-    for (auto T: the_list) std::cout << T << " "; std::cout << std::endl;
+    buff  <<std::endl << "undone sectors: ";
+    for (auto T: the_list) buff << T << " "; buff << std::endl;
 
     // remove sprites
 	std::set<int> robj{9117, 5873, 7202, 7451, 7452, 7642, 7643, 7644, 7645, 7646, 7647, 7648, 7649};
@@ -1398,30 +1404,31 @@ int Map::processing(const float scope=1.f) {
         else
 			++it;
 
-    std::cout << std::endl << "was removed: " << (last-spV.size()) << " sprites" << std::endl;
+    buff << std::endl << "was removed: " << (last-spV.size()) << " sprites" << std::endl;
 
     finish();
 
-	return 0;
+    ret +=buff.str();
+    return EXIT_SUCCESS;
 };
 
-int Map::check()
+int Map::check(std::stringstream& refer)
 {
-    bool flag=false; SC<<SE;
+    bool flag=false; refer<<SE;
     for (auto i:sV)
     {
         if (i.wallnum != i.wall_count())
         {
-            SC << "Have collision in wall counter: " << i.wallnum << " " << i.wall_count() << SE;
+            refer << "Have collision in wall counter: " << i.wallnum << " " << i.wall_count() << SE;
             flag=true;
         };
         if (i.wallptr != (i.firstWall - wV.begin()))
         {
-            SC << "Have collision in wall pointer: " << i.wallptr << " " << (i.firstWall-wV.begin()) << SE;
+            refer << "Have collision in wall pointer: " << i.wallptr << " " << (i.firstWall-wV.begin()) << SE;
             flag=true;
         };
     };
     if (!flag)
-        SC << "check of the map structure was success." << SE;
+        refer << "check of the map structure was success." << SE;
     return 0;
 };

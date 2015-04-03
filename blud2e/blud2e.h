@@ -11,6 +11,9 @@
 #include <glm/glm.hpp>
 #include <typeinfo>
 #include <functional>
+#include <string>
+#include <sstream>
+#include <iostream>
 
 #define SHOW(a) std::cout << #a << ": " << (int)(a) << std::endl
 #define PN T.picnum
@@ -428,7 +431,7 @@ private:
     dukeMap dh;
 	int lengthMap, Revision=-1; //, posX,posY, posZ;
     float scale=1.f;
-    void showInfo();
+    void showInfo(std::string&);
 
 	std::vector<unionSector> sV;
 	std::vector<unionWall> wV;
@@ -443,15 +446,15 @@ private:
     std::vector<int> findAllSprites(std::vector<unionSector>::iterator the_sector);
     glm::vec3 getRndPosition(std::vector<unionSector>::iterator the_sector);
 
-    int makeExplosiveSector();
-    int makeElevatorSector();
-    int makeDoomDoors();
-    int makeEnterSensor();
-    int makeSlideSector();
-    int makeController();
-    int makeTROR();
-    int makeRotateSector();
-    int makeSlideDoors();
+    int makeExplosiveSector(std::stringstream&);
+    int makeElevatorSector(std::stringstream&);
+    int makeDoomDoors(std::stringstream&);
+    int makeEnterSensor(std::stringstream&);
+    int makeSlideSector(std::stringstream&);
+    int makeController(std::stringstream&);
+    int makeTROR(std::stringstream&);
+    int makeRotateSector(std::stringstream&);
+    int makeSlideDoors(std::stringstream&);
 
 public:
 //std::map<std::string, int> SecNametoNumber;
@@ -459,15 +462,15 @@ public:
 	soundTable sTable;
 	std::map<int, glm::ivec2> targa;
 	int openPicsTable(std::string filename, std::map<int, glm::ivec2> &table);
-	int read(char *filename);
+    int read(char *filename, std::string &);
     void printSector(int num, bool blood);
 	int write (char *filename);
 	int prepare();
 	int finish();
-    int processing(const float);
+    int processing(std::string&, const float);
 	void show();
 	int extract(int, char*filename);
-	int check();
+    int check(std::stringstream&);
 	void rm() {wV.erase(wV.begin(), wV.end());spV.erase(spV.begin(), spV.end()); sV.erase(sV.begin(), sV.end());}
 };
 

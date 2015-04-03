@@ -96,27 +96,28 @@ int read_string(std::vector<std::string> &words, std::ifstream& in) {
 };
 
 ///////----- M A P    C L A S S ////////////////////////////
-void Map::showInfo() {
-    std::cerr << "===== MAP INFO ============" << std::endl
-        << "Initial position: "  << std::endl
-        << "startX: " << dh.X  << std::endl
-        << "startY: " << dh.Y  << std::endl
-        << "startZ: " << dh.Z  << std::endl
-        << "startAngle: " << dh.angle  << std::endl
-        << "sectorNum: " << dh.sector  << std::endl;
+void Map::showInfo(std::string& ret) {
+    std::stringstream buff;
+    buff << "===== MAP INFO ============\n";
+    buff << "Initial position: \n";
+    buff <<"startX: " << dh.X  << "\n";
+    buff << "startY: " << dh.Y  << "\n";
+    buff << "startZ: " << dh.Z  << "\n";
+    buff << "startAngle: " << dh.angle  << std::endl
+         << "sectorNum: " << dh.sector  << std::endl;
         if (isEncrypted)
         {
-            std::cerr << std::endl << "Encrypted: yes" << std::endl;
-            std::cerr << "Map revision: " << Revision  << std::endl;
+            buff << std::endl << "Encrypted: yes" << std::endl;
+            buff << "Map revision: " << Revision  << std::endl;
         } else
-            std::cerr << std::endl << "Encrypted: no" << std::endl;
+            buff << std::endl << "Encrypted: no" << std::endl;
 
-    std::cerr << "map version: " << dh.version << std::endl;
-    std::cerr << "amount Sectors: " << sV.size()  << std::endl;
-    std::cerr << "amount Walls: " << wV.size()  << std::endl;
-    std::cerr << "amount Sprites: " << spV.size()  << std::endl;
+    buff << "map version: " << dh.version << std::endl;
+    buff << "amount Sectors: " << sV.size()  << std::endl;
+    buff << "amount Walls: " << wV.size()  << std::endl;
+    buff << "amount Sprites: " << spV.size()  << std::endl;
 
-
+    ret+=buff.str();
 };
 
 ////////////////////// W R I T E ////////////////////////////////////
@@ -147,9 +148,10 @@ int  Map::write(char *filename) {
 };
 
 ////////////////// R E A D /////////////////////////////////////////////
-int Map::read(char *filename)
+int Map::read(char *filename, std::string& ret)
 {
 	// open file
+    std::stringstream buff;
 	std::ifstream in (filename, std::ifstream::binary);
 
 	if (in.is_open())
@@ -161,7 +163,10 @@ int Map::read(char *filename)
 		lengthMap = in.tellg();
 		in.seekg (0, in.beg);
 
-		assert(lengthMap >= 26) ; // minimal size for empty map of duke format
+        if (lengthMap <26) {
+            ret+="ERROR: lenght of map is too small!\n";
+            return EXIT_FAILURE;
+        }
 
         // get work buffer
 		char Buffer[128];
@@ -173,7 +178,7 @@ int Map::read(char *filename)
 		// if Blood map format
 		if ( (sign[0] ^ sign[1] ^ sign[2] ^ sign[3]) == 0x59 )
             {
-                std::cerr << "Blood MAP format detection..." <<std::endl;
+                buff << "Blood MAP format detection..." <<std::endl;
                 if (sign[4] == 3 && sign[5] == 6 )
                     dh.version=63;
                 else if (sign[4] == 0 && sign[5] == 7)
@@ -182,11 +187,11 @@ int Map::read(char *filename)
                     isEncrypted=true;
                 } else
                 {
-                    std::cerr << "\nDecryptor can only handle map versions 6.3 and 7.0.\n" <<
-                    "Try bringing the map up in the latest version of mapedit, then save it.\n" <<
-                    "This should produce a 7.0 version map, which Decryptor CAN convert to build." << std::endl;
+                    ret+= "\nDecryptor can only handle map versions 6.3 and 7.0.\n";
+                    ret+="Try bringing the map up in the latest version of mapedit, then save it.\n";
+                    ret+="This should produce a 7.0 version map, which Decryptor CAN convert to build.\n";
                     in.close();
-                    return -1;
+                    return EXIT_FAILURE;
                 };
 
                 // read magic+version
@@ -202,7 +207,7 @@ int Map::read(char *filename)
                 dh.sector=hd1.sectorNum;
                 unsigned int NbUnknownElements = (1 << hd1.unknownElts);
 
-                std::cerr << "count unknownElts: " << NbUnknownElements << std::endl;
+                buff << "count unknownElts: " << NbUnknownElements << std::endl;
 
                 // seek second header
                 in.seekg(size_secondHeader, in.cur);
@@ -226,11 +231,11 @@ int Map::read(char *filename)
                 in.read((char*)&dh, sizeof(dh));
                 if ( dh.version < 6 && dh.version > 10 )
                 {
-                     std::cerr << "Incorrect format file!" << std::endl;
+                     ret+= "ERROR: Incorrect format file!\n";
                      in.close();
                      return -1;
                 };
-                std::cerr << "Duke MAP format detection..." <<std::endl;
+                buff << "Duke MAP format detection..." <<std::endl;
                 in.read((char*)&amountSectors, sizeof(amountSectors));
                 blood_format=false;
            };
@@ -297,15 +302,17 @@ int Map::read(char *filename)
                 };
                 spV.push_back(SP);
             };
-
-            showInfo();
+            std::string rf;
+            showInfo(rf); //???? ret??
+            buff << rf;
         } else{
-            std::cerr << "ERROR: can't open file: " << filename << SE;
+            ret+= "ERROR: can't open file: "; ret+= std::string(filename); ret+="\n";
             return -1;
         };
 
 	in.close();
-    return 0;
+    ret+=buff.str();
+    return EXIT_SUCCESS;
 };
 
 ///////////////////  S H O W ///////////////////////////////////////////

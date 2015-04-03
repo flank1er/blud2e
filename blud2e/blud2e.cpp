@@ -5,8 +5,6 @@
    License: GPL v.3
 */
 
-#include <iostream>
-#include <string>
 #include <blud2e.h>
 
 void show_help_message();
@@ -19,6 +17,7 @@ int main(int argc, char *argv[]) {
 
     Map map; const float version=0.7; int infoSector;
     std::string mode="blank"; char * blood_filemap;  char * duke_filemap;
+    std::string refer="";
 
 	std::cerr << "\nDecryptor MAP files from Blood video game, Monolith Production, 1997(c)\n" << \
 	"Author: flanker\n" << \
@@ -105,7 +104,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-	map.read(blood_filemap);
+    map.read(blood_filemap, refer);
 
 
     if (mode == "export")
@@ -116,7 +115,7 @@ int main(int argc, char *argv[]) {
 		map.printSector(infoSector, true);
 	else if ( mode == "convert" )
 	{
-        map.processing(1.f); // C O N V E R S I O N
+        map.processing(refer, 0.75f); // C O N V E R S I O N
         if (map.write(duke_filemap) <0)
         {
             std::cerr << "ERROR: couldn't write file : sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
@@ -124,7 +123,8 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    return 0;
+    std::cout << refer << std::endl;
+    return EXIT_SUCCESS;
 };
 
 void show_help_message()
