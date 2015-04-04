@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     const char* original_sound="sounds_old.con";
     const char* pic_file="pic_table.con";
 
-    Map map; const float version=0.7; int infoSector;
+    blud2e map; const float version=0.7; int infoSector;
     std::string mode="blank"; char * blood_filemap;  char * duke_filemap;
     std::string refer="";
 

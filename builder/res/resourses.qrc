@@ -1,0 +1,25 @@
+<RCC>
+    <qresource prefix="/images" lang="engilsh">
+        <file>open_file.png</file>
+        <file>info_key.png</file>
+        <file>logo_about.png</file>
+        <file>icon_48.png</file>
+        <file>about_254.png</file>
+        <file>icon_32.png</file>
+        <file>open_48.png</file>
+        <file>save.png</file>
+        <file>exit.png</file>
+        <file>ok_button.png</file>
+        <file>ok.png</file>
+        <file>no_button.png</file>
+        <file>no.png</file>
+        <file>new.png</file>
+        <file>info.png</file>
+        <file>information.png</file>
+        <file>quest.png</file>
+        <file>question.png</file>
+        <file>ex.png</file>
+        <file>exclamation.png</file>
+        <file>OpenGL.png</file>
+    </qresource>
+</RCC>

@@ -15,7 +15,7 @@
 #include <cassert>
 #include <string>
 #include <map>
-#include <blud2e.h>
+#include "blud2e.h"
 #include <cassert>
 #include <glm/gtc/matrix_transform.hpp>
 #include <sys/stat.h> // check that file exists
@@ -50,6 +50,31 @@ struct thirdHeader {
 	short numWalls;
 	short numSprites;
 };
+
+
+std::string textFileRead (const char * filename)
+{
+    std::string str, ret = "" ;
+    std::ifstream in;
+    in.open(filename) ;
+    if (in.is_open())
+    {
+        getline (in, str) ;
+        while (in)
+        {
+            ret += str + "\n" ;
+            getline (in, str) ;
+        }
+        //    cout << "Shader below\n" << ret << "\n" ;
+        in.close();
+        return ret ;
+    }
+    else
+    {
+        //qDebug() << "Unable to Open File " << filename ;
+        return "";
+    }
+}
 
 bool fileExists(const char* filename)
 {
@@ -96,7 +121,7 @@ int read_string(std::vector<std::string> &words, std::ifstream& in) {
 };
 
 ///////----- M A P    C L A S S ////////////////////////////
-void Map::showInfo(std::string& ret) {
+void blud2e::showInfo(std::string& ret) {
     std::stringstream buff;
     buff << "===== MAP INFO ============\n";
     buff << "Initial position: \n";
@@ -121,7 +146,7 @@ void Map::showInfo(std::string& ret) {
 };
 
 ////////////////////// W R I T E ////////////////////////////////////
-int  Map::write(char *filename) {
+int  blud2e::write(char *filename) {
 
     std::ofstream out(filename, std::ofstream::binary);
     if (out.is_open())
@@ -141,14 +166,14 @@ int  Map::write(char *filename) {
         return -1;
 	}
 
-    wV.erase(wV.begin(), wV.end());
-    spV.erase(spV.begin(), spV.end());
-    sV.erase(sV.begin(), sV.end());
+    //wV.erase(wV.begin(), wV.end());
+    //spV.erase(spV.begin(), spV.end());
+    //sV.erase(sV.begin(), sV.end());
     return 0;
 };
 
 ////////////////// R E A D /////////////////////////////////////////////
-int Map::read(char *filename, std::string& ret)
+int blud2e::read(char *filename, std::string& ret)
 {
 	// open file
     std::stringstream buff;
@@ -316,7 +341,7 @@ int Map::read(char *filename, std::string& ret)
 };
 
 ///////////////////  S H O W ///////////////////////////////////////////
-void Map::printSector(int  num, bool blood)
+void blud2e::printSector(int  num, bool blood)
 {
     /// prepare
     std::map<int, std::string> secType = {{600, "Z Motion"}, {0, "Normal"}};
@@ -730,7 +755,7 @@ int soundTable::open(std::string source_file, std::string target_file, std::stri
 	return 0;
 };
 
-int Map::openPicsTable(std::string filename, std::map<int, glm::ivec2> &table){
+int blud2e::openPicsTable(std::string filename, std::map<int, glm::ivec2> &table){
 ///		COUNT OF LINES ////////////////////
 
 		std::ifstream f(filename, std::ifstream::binary);
@@ -786,7 +811,7 @@ int Map::openPicsTable(std::string filename, std::map<int, glm::ivec2> &table){
     return 0;
 };
 
-void Map::show()
+void blud2e::show()
 {
     for (auto T: sV)
         T.print();

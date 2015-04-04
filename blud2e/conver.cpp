@@ -12,7 +12,7 @@
 #include <iterator>
 #include <numeric>
 #include <set>
-#include <blud2e.h>
+#include "blud2e.h"
 #include <glm/glm.hpp>
 
 class CHANNEL
@@ -178,7 +178,7 @@ static std::vector<unionSprite>::iterator findTSprite(int request, std::vector<u
 	return it;
 };
 
-std::vector<int> Map::findAllSprites(std::vector<unionSector>::iterator the_sector)
+std::vector<int> blud2e::findAllSprites(std::vector<unionSector>::iterator the_sector)
 {
     std::vector<int> the_vector;
     for(int i=0; i < (int)spV.size(); i++)
@@ -214,7 +214,7 @@ float getArea(std::vector<unionWall>::iterator iter, glm::vec3 point)
     return ret;
 };
 
-glm::vec3 Map::getRndPosition(std::vector<unionSector>::iterator the_sector)
+glm::vec3 blud2e::getRndPosition(std::vector<unionSector>::iterator the_sector)
 {
     glm::vec3 ret=glm::vec3(0.f);
     if (the_sector->generic->property("proper"))
@@ -328,7 +328,7 @@ int getKey(std::vector<unionSector>::iterator sec)
     return ret;
 };
 
-int Map::addSprite(int room,  int rxChannel, int txChannel ,std::string name, glm::vec4 p=glm::vec4(0.f))
+int blud2e::addSprite(int room,  int rxChannel, int txChannel ,std::string name, glm::vec4 p=glm::vec4(0.f))
 {
     assert(room < (int)sV.size());
     if (sV.at(room).over)
@@ -436,7 +436,7 @@ int Map::addSprite(int room,  int rxChannel, int txChannel ,std::string name, gl
     return 0;
 };
 
-int Map::makeExplosiveSector(std::stringstream& refer) {
+int blud2e::makeExplosiveSector(std::stringstream& refer) {
 	int last=get_done(sV);
     std::set<int> boom_set;
     for(auto& T:sV)
@@ -491,7 +491,7 @@ int Map::makeExplosiveSector(std::stringstream& refer) {
 	return ret;
 };
 
-int Map::makeElevatorSector(std::stringstream& refer)
+int blud2e::makeElevatorSector(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> elevator_set;
@@ -517,7 +517,7 @@ int Map::makeElevatorSector(std::stringstream& refer)
 	return ret;
 };
 
-int Map::makeDoomDoors(std::stringstream& refer)
+int blud2e::makeDoomDoors(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> floor_set;
@@ -594,7 +594,7 @@ int Map::makeDoomDoors(std::stringstream& refer)
 	return ret;
 };
 
-int Map::makeEnterSensor(std::stringstream& refer)
+int blud2e::makeEnterSensor(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> sectors_set;
@@ -635,7 +635,7 @@ int Map::makeEnterSensor(std::stringstream& refer)
 	return ret;
 };
 
-int Map::makeSlideSector(std::stringstream& refer)
+int blud2e::makeSlideSector(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> sector_list;
@@ -704,7 +704,7 @@ int Map::makeSlideSector(std::stringstream& refer)
 	return ret;
 };
 
-int Map::makeController(std::stringstream& refer)
+int blud2e::makeController(std::stringstream& refer)
 {
     int last=get_done(spV);
     std::set<int> the_list;
@@ -765,7 +765,7 @@ int Map::makeController(std::stringstream& refer)
 	return ret;
 };
 
-int Map::makeTROR(std::stringstream& refer)
+int blud2e::makeTROR(std::stringstream& refer)
 {
     std::vector<auxTROR> aux;
     int ret=0;
@@ -855,7 +855,7 @@ int Map::makeTROR(std::stringstream& refer)
 	return ret;
 };
 
-int Map::makeRotateSector(std::stringstream& refer)
+int blud2e::makeRotateSector(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> sector_list;
@@ -941,7 +941,7 @@ int Map::makeRotateSector(std::stringstream& refer)
 	return ret;
 };
 
-int Map::makeSlideDoors(std::stringstream& refer)
+int blud2e::makeSlideDoors(std::stringstream& refer)
 {
 	int last=get_done(sV);
     std::set<int> sector_list;
@@ -968,7 +968,7 @@ int unionSprite::makeAmbient(int musicID, int radius)
         return 0;
 };
 
-void Map::Cstat()
+void blud2e::Cstat()
 {
 
     for (auto& T: spV)
@@ -1018,7 +1018,7 @@ void Map::Cstat()
 
 };
 
-void Map::makeEnemies()
+void blud2e::makeEnemies()
 {
     for (auto& T : spV)
         if (T.over  && enemies.count(T.lotag))
@@ -1038,7 +1038,7 @@ void Map::makeEnemies()
         };
 };
 
-void Map::makeSectorSFX(unionSprite& Sp)
+void blud2e::makeSectorSFX(unionSprite& Sp)
 {
     Sp.tag=glm::ivec3(sTable.trans(Sp.data1), sTable.trans(Sp.data2), -1);
     Sp.shade=Sp.pal=0;
@@ -1059,7 +1059,7 @@ void Map::makeSectorSFX(unionSprite& Sp)
     };
 };
 
-void Map::makeRespawn(unionSprite& Sp)
+void blud2e::makeRespawn(unionSprite& Sp)
 {
     if (Sp.isType("Explode Object") || Sp.isType("Gib Object") || enemies.count(Sp.lotag) || Sp.isType("Dude Spawn"))
     {
@@ -1077,7 +1077,7 @@ void Map::makeRespawn(unionSprite& Sp)
     };
 };
 
-void Map::makeExplodeAndGib()
+void blud2e::makeExplodeAndGib()
 {
     for(auto& Sp: spV)
         if (Sp.over && (Sp.isType("Explode Object")|| (Sp.isType("Gib Object")
@@ -1106,7 +1106,7 @@ void Map::makeExplodeAndGib()
         };
 };
 
-int Map::prepare()
+int blud2e::prepare()
 {
 	// din't use music ID as channel
 	for (auto it=sTable.target.begin(); it != sTable.target.end(); ++it)
@@ -1274,7 +1274,7 @@ int Map::prepare()
     return 0;
 };
 
-int Map::finish()
+int blud2e::finish()
 {
     for (auto& T: wV)
 	{
@@ -1313,7 +1313,7 @@ int Map::finish()
     return 0;
 };
 
-int Map::processing(std::string& ret, const float scope=1.f) {
+int blud2e::processing(std::string& ret, const float scope=1.f) {
     scale=scope;
     prepare();
     std::stringstream buff;
@@ -1412,7 +1412,7 @@ int Map::processing(std::string& ret, const float scope=1.f) {
     return EXIT_SUCCESS;
 };
 
-int Map::check(std::stringstream& refer)
+int blud2e::check(std::stringstream& refer)
 {
     bool flag=false; refer<<SE;
     for (auto i:sV)
@@ -1432,3 +1432,92 @@ int Map::check(std::stringstream& refer)
         refer << "check of the map structure was success." << SE;
     return 0;
 };
+
+glm::vec3 blud2e::getWallPos(int wall)
+{
+    glm::vec3 ret=glm::vec3(0.f);
+    auto it=wV.begin()+wall;
+    if (it != wV.end())
+        ret=it->pos;
+    //else
+        //qDebug() << "MAP::getWallPos illegal argument: "<< wall;
+    return ret;
+}
+
+glm::vec3 blud2e::getWallNextPos(int wall)
+{
+    glm::vec3 ret=glm::vec3(0.f);
+    auto it=wV.begin()+wall;
+    if (it != wV.end())
+        ret=it->nextPoint->pos;
+    //else
+        //qDebug() << "MAP::getWallNextPos illegal argument: "<< wall;
+    return ret;
+}
+
+
+glm::vec3 blud2e::getCenterMap(std::string & rb)
+{
+    glm::vec3 ret=glm::vec3(0.f);
+    if (!isEmpty())
+    {
+        for (auto T: wV)  ret+=T.pos;
+        ret /=wV.size();
+    } else
+    {
+        std::string msg="ERROR: you can't get center of EMPTY map!\n";
+        rb +=msg;
+     }
+    return ret;
+}
+
+GLfloat* blud2e::getWhiteOutline(std::vector<GLfloat>& w)
+{
+    w.erase(w.begin(), w.end()); // format c:
+   if (!isEmpty())
+   {
+        for (auto T : wV)
+        {
+            if (T.nextsector < 0)
+            {
+                w.push_back((GLfloat)T.pos.x);
+                w.push_back((GLfloat)T.pos.y);
+                w.push_back((GLfloat)T.nextPoint->pos.x);
+                w.push_back((GLfloat)T.nextPoint->pos.y);
+             }
+        }
+   };
+
+   return NULL;
+}
+
+void blud2e::getRedOutline(std::vector<GLfloat>& w)
+{
+    w.erase(w.begin(), w.end()); // format c:
+   if (!isEmpty())
+   {
+        for (auto T : wV)
+        {
+            if (T.nextsector >= 0)
+            {
+                w.push_back((GLfloat)T.pos.x);
+                w.push_back((GLfloat)T.pos.y);
+                w.push_back((GLfloat)T.nextPoint->pos.x);
+                w.push_back((GLfloat)T.nextPoint->pos.y);
+             }
+        }
+   }
+}
+
+void blud2e::getPointsOutline(std::vector<GLfloat>& p)
+{
+    p.erase(p.begin(), p.end()); // format c:
+   if (!isEmpty())
+   {
+        for (auto T : spV)
+        {
+            p.push_back(T.pos.x);
+            p.push_back(T.pos.y);
+        }
+   }
+}

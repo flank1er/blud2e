@@ -5,7 +5,7 @@
 #include <iterator>
 #include <numeric>
 #include <set>
-#include <blud2e.h>
+#include "blud2e.h"
 #include <glm/glm.hpp>
 
 class OBJEXP
@@ -179,7 +179,7 @@ public:
     };
 };
 
-int Map::extract(int num, char* filename)
+int blud2e::extract(int num, char* filename)
 {
     OBJEXP obj;
 	if ( (unsigned int)num >= sV.size() && num != -1)

@@ -14,6 +14,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <GL/gl.h>
 
 #define SHOW(a) std::cout << #a << ": " << (int)(a) << std::endl
 #define PN T.picnum
@@ -25,6 +26,7 @@
 
 
 bool fileExists(const char*);
+std::string textFileRead (const char*);
 
 template<class InputIterator, class Function>
 Function for_loop(InputIterator first, Function fn)
@@ -379,7 +381,7 @@ class  unionSector : public Sector, public xSector {
         int wall_count(){
             int ret=0;
             for(auto i: loops)
-                for_loop(i.marker, [&ret](unionWall _s){ret++;});
+                for_loop(i.marker, [&ret](unionWall _s){ret++; _s=_s;}); // _s=_s REMOVE IT AFTER!!!
             return ret;
         };
     private:
@@ -426,16 +428,16 @@ struct soundTable {
 	int open(std::string, std::string, std::string);
 };
 
-class Map {
+class blud2e {
 private:
     dukeMap dh;
 	int lengthMap, Revision=-1; //, posX,posY, posZ;
     float scale=1.f;
     void showInfo(std::string&);
 
-	std::vector<unionSector> sV;
-	std::vector<unionWall> wV;
-	std::vector<unionSprite> spV;
+    std::vector<unionSector> sV;
+    std::vector<unionWall> wV;
+    std::vector<unionSprite> spV;
 
     int addSprite(int, int, int,std::string, glm::vec4);
     void Cstat();
@@ -458,7 +460,6 @@ private:
 
 public:
 //std::map<std::string, int> SecNametoNumber;
-
 	soundTable sTable;
 	std::map<int, glm::ivec2> targa;
 	int openPicsTable(std::string filename, std::map<int, glm::ivec2> &table);
@@ -472,6 +473,19 @@ public:
 	int extract(int, char*filename);
     int check(std::stringstream&);
 	void rm() {wV.erase(wV.begin(), wV.end());spV.erase(spV.begin(), spV.end()); sV.erase(sV.begin(), sV.end());}
+
+    bool isEmpty() { if ((int)sV.size() == 0) return true; else return false;};
+
+    int getSectors() {return (int)sV.size();};
+    int getWalls() {return (int)wV.size();}
+    int getSprites() {return (int)spV.size();}
+
+    glm::vec3 getWallNextPos(int wall);
+    glm::vec3 getWallPos(int wall);
+    glm::vec3 getCenterMap(std::string&);
+    void getRedOutline(std::vector<GLfloat>&);
+    GLfloat* getWhiteOutline(std::vector<GLfloat>&);
+    void getPointsOutline(std::vector<GLfloat>&);
 };
 
 /*
