@@ -15,10 +15,15 @@
 #include <cassert>
 #include <string>
 #include <map>
+#include <climits>
+#include <sstream>
+
 #include "blud2e.h"
+
 #include <cassert>
 #include <glm/gtc/matrix_transform.hpp>
 #include <sys/stat.h> // check that file exists
+#include <zlib.h>
 
 const int size_signature=6;
 const int size_firstHeader=18;
@@ -39,7 +44,7 @@ struct firstHeader {
 	int startX;
 	int startY;
 	int startZ;
-	short startAngle;
+    unsigned short startAngle;
 	short sectorNum;
 	short unknownElts;
 };
@@ -49,6 +54,11 @@ struct thirdHeader {
 	short numSectors;
 	short numWalls;
 	short numSprites;
+};
+
+struct signature {
+    unsigned int label=0x1A4D4C42;
+    unsigned short ver=0x0700;
 };
 
 
@@ -194,7 +204,7 @@ int blud2e::read(char *filename, std::string& ret)
         }
 
         // get work buffer
-		char Buffer[128];
+        char Buffer[180];
 		char * ptr= (char*)Buffer;
 		unsigned char sign[6];
 
@@ -231,12 +241,15 @@ int blud2e::read(char *filename, std::string& ret)
                 dh.angle=hd1.startAngle;
                 dh.sector=hd1.sectorNum;
                 unsigned int NbUnknownElements = (1 << hd1.unknownElts);
+                elm=hd1.unknownElts;
 
                 buff << "count unknownElts: " << NbUnknownElements << std::endl;
 
                 // seek second header
-                in.seekg(size_secondHeader, in.cur);
-
+                //in.seekg(size_secondHeader, in.cur);
+                in.read(ptr,size_secondHeader);
+                hd2 &sh1=*(hd2*)Buffer;
+                sh=sh1;
                 // read third header
                 in.read(ptr,size_thirdHeader);
                 DecryptBuffer ((unsigned char*)ptr, size_thirdHeader, 0x68);
@@ -249,7 +262,11 @@ int blud2e::read(char *filename, std::string& ret)
                 // seek to position to begin of first sector
                 long offset = (isEncrypted) ? size_extra : 0;
                 offset += (NbUnknownElements * size_unknownElts);
-                in.seekg(offset, in.cur);
+                //std::cout << "offset: " << offset;
+                //in.seekg(offset, in.cur);
+                in.read(ptr,offset);
+                hd4 &sh4=*(hd4*)Buffer;
+                fh=sh4;
            } else
            {
                 in.seekg(0, in.beg);
@@ -339,6 +356,128 @@ int blud2e::read(char *filename, std::string& ret)
     ret+=buff.str();
     return EXIT_SUCCESS;
 };
+
+int blud2e::saveToBlood(char* filename, std::string& ret)
+{
+    // open file
+    std::stringstream buff;
+    std::ofstream out (filename, std::ofstream::binary);
+
+    if (out.is_open())
+    {        
+        Revision++;
+        unsigned char* buffer = new unsigned char[180];
+        uLong crc = crc32(0L, Z_NULL, 0);
+
+        //////////SIGNATURE////////////////////
+        signature sg;
+        buffer=(unsigned char*)&sg;
+        out.write((char*)buffer, size_signature);
+        crc=crc32(crc, buffer, size_signature);
+        /////////MAGIC NUMBER ///////////////////////
+        firstHeader head_first;
+        head_first.startX=dh.X;
+        head_first.startY=dh.Y;
+        head_first.startZ=dh.Z;
+        head_first.startAngle=dh.angle;
+        head_first.startAngle=dh.sector;
+        head_first.unknownElts=elm;
+        buffer=(unsigned char*)&head_first;
+        DecryptBuffer ((unsigned char*)buffer, size_firstHeader, 0x4D);
+        out.write((char*)buffer,size_firstHeader);
+        crc=crc32(crc, buffer, size_firstHeader);
+
+        buffer=(unsigned char*)&sh;
+        out.write((char*)buffer,size_secondHeader);
+        crc=crc32(crc, buffer, size_secondHeader);
+
+        ///// AMOUNT OF SECTORS / WALLS / SPRITES / REVISION NUMBER /////third header //////////
+        thirdHeader hd3;
+        hd3.numSectors=sV.size();
+        hd3.numWalls=wV.size();
+        hd3.numSprites=spV.size();
+        hd3.mapRevisions=Revision;
+        buffer=(unsigned char*)&hd3;
+        DecryptBuffer ((unsigned char*)buffer, size_thirdHeader, 0x68);
+        out.write((char*)buffer,size_thirdHeader);
+        crc=crc32(crc, buffer, size_thirdHeader);
+
+        int offset=size_extra+(2<<elm);
+        buffer=(unsigned char*)&fh;
+        out.write((char*)buffer, offset);
+        crc=crc32(crc, buffer, offset);
+        //std::cout << "offset: " << offset <<std::endl;
+
+        /// SECTORS ///////////////
+        unsigned char  decryptKey = ((Revision * size_sector) & 0xFF);
+        for (auto T: sV)
+        {
+            Sector chunk;
+            chunk=dynamic_cast<Sector&>(T);
+            buffer=(unsigned char*)&chunk;
+            DecryptBuffer ((unsigned char*)buffer, size_sector, decryptKey);
+            out.write((char*)buffer, size_sector);
+            crc=crc32(crc, buffer, size_sector);
+            if (T.extra > 0)
+            {
+                xSector chunkX;
+                chunkX=dynamic_cast<xSector&>(T);
+                buffer=(unsigned char*)&chunkX;
+                out.write((char*)buffer, size_extra_sector);
+                crc=crc32(crc, buffer, size_extra_sector);
+            }
+        };
+
+        //// WALLS /////////////////
+        decryptKey = (((Revision * size_sector) | 0x4d) & 0xFF);
+        for (auto T: wV)
+        {
+            Wall chunk;
+            chunk=dynamic_cast<Wall&>(T);
+            buffer=(unsigned char*)&chunk;
+            DecryptBuffer ((unsigned char*)buffer, size_wall, decryptKey);
+            out.write((char*)buffer, size_wall);
+            crc=crc32(crc, buffer, size_wall);
+            if (T.extra > 0)
+            {
+                xWall chunkX;
+                chunkX=dynamic_cast<xWall&>(T);
+                buffer=(unsigned char*)&chunkX;
+                out.write((char*)buffer, size_extra_wall);
+                crc=crc32(crc, buffer, size_extra_wall);
+            }
+        };
+
+        //// SPRITES /////////////////////////
+        decryptKey = (((Revision * size_sprite) | 0x4d) & 0xFF);
+        for (auto T: spV)
+        {
+            Sprite chunk;
+            chunk=dynamic_cast<Sprite&>(T);
+            buffer=(unsigned char*)&chunk;
+            DecryptBuffer ((unsigned char*)buffer, size_sprite, decryptKey);
+            out.write((char*)buffer, size_sprite);
+            crc=crc32(crc, buffer, size_sprite);
+            if (T.extra > 0)
+            {
+                xSprite chunkX;
+                chunkX=dynamic_cast<xSprite&>(T);
+                buffer=(unsigned char*)&chunkX;
+                out.write((char*)buffer, size_extra_sprite);
+                crc=crc32(crc, buffer, size_extra_sprite);
+            }
+        };
+
+        out.write((char*)&crc,4);
+    } else
+    {
+        ret+= "ERROR: can't  write to file: "; ret+= std::string(filename); ret+="\n";
+        return EXIT_FAILURE;
+    }
+    out.close();
+    ret+=buff.str();
+    return EXIT_SUCCESS;
+}
 
 ///////////////////  S H O W ///////////////////////////////////////////
 void blud2e::printSector(int  num, bool blood)

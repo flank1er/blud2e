@@ -46,8 +46,17 @@ struct dukeMap {
 	int X;
 	int Y;
 	int Z;
-	short angle;
+    unsigned short angle;
 	short sector;
+};
+
+struct hd2
+{
+    char data[9];
+};
+struct hd4
+{
+    char data[180];
 };
 
 struct Sector {
@@ -301,6 +310,8 @@ struct FLOOR {
     glm::vec2 delta; // sec_t::grad[2]  map2stl.c
 };
 
+class unionSector;
+
 class  unionWall : public Wall, public xWall {
     public:
         void print();
@@ -315,6 +326,7 @@ class  unionWall : public Wall, public xWall {
         std::vector<unionWall>::iterator nextPoint;
         std::vector<unionWall>::iterator prePoint;
         std::vector<unionWall>::iterator nextWall;
+        std::vector<unionSector>::iterator nextSector;
         glm::vec3 get_normal();
     private:
 };
@@ -429,8 +441,14 @@ struct soundTable {
 };
 
 class blud2e {
+
+protected:
+
 private:
     dukeMap dh;
+    short elm;
+    hd2 sh;
+    hd4 fh;
 	int lengthMap, Revision=-1; //, posX,posY, posZ;
     float scale=1.f;
     void showInfo(std::string&);
@@ -466,6 +484,7 @@ public:
     int read(char *filename, std::string &);
     void printSector(int num, bool blood);
 	int write (char *filename);
+    int saveToBlood(char* filename, std::string&);
 	int prepare();
 	int finish();
     int processing(std::string&, const float);

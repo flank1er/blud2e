@@ -214,15 +214,6 @@ void GLWidget::resizeGL(int w, int h)
     //qDebug() << "width: " << w<< " height: " << h;
 }
 
-void GLWidget::init_map(bool)
- {
-
-    map.getWhiteOutline(eng::white);
-    eng::wl=eng::white.data();
-    map.getRedOutline(eng::green);
-    eng::gr=eng::green.data();
- }
-
 void GLWidget::chng_map(QString)
 {
     map.getWhiteOutline(eng::white);
@@ -234,88 +225,33 @@ void GLWidget::chng_map(QString)
 }
 
 
-
 void GLWidget::KeyHandler(QString cmd)
 {
  //   qDebug() << cmd;
     if (cmd == "zoom_plus")
     {
-        glViewport(0, 0, (GLsizei)eng::width, (GLsizei)eng::height);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
         eng::scale -=5;
-        eng::xmin=eng::x0-(eng::width/2.f * eng::scale);
-        eng::xmax=eng::x0+(eng::width/2.f * eng::scale);
-        eng::ymin=eng::y0-(eng::height/2.f * eng::scale);
-        eng::ymax=eng::y0+(eng::height/2.f * eng::scale);
-
-        gluOrtho2D(eng::xmin, eng::xmax, eng::ymax, eng::ymin);
+        resizeGL(eng::width, eng::height);
     } else if (cmd == "zoom_minus")
     {
-        glViewport(0, 0, (GLsizei)eng::width, (GLsizei)eng::height);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
         eng::scale +=5;
-        eng::xmin=eng::x0-(eng::width/2.f * eng::scale);
-        eng::xmax=eng::x0+(eng::width/2.f * eng::scale);
-        eng::ymin=eng::y0-(eng::height/2.f * eng::scale);
-        eng::ymax=eng::y0+(eng::height/2.f * eng::scale);
-
-        gluOrtho2D(eng::xmin, eng::xmax, eng::ymax, eng::ymin);
+        resizeGL(eng::width, eng::height);
     } else if (cmd == "left")
     {
-        glViewport(0, 0, (GLsizei)eng::width, (GLsizei)eng::height);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
-        eng::x0 -=2<<eng::gSc;
-        eng::xmin=eng::x0-(eng::width/2.f * eng::scale);
-        eng::xmax=eng::x0+(eng::width/2.f * eng::scale);
-        eng::ymin=eng::y0-(eng::height/2.f * eng::scale);
-        eng::ymax=eng::y0+(eng::height/2.f * eng::scale);
-
-        gluOrtho2D(eng::xmin, eng::xmax, eng::ymax, eng::ymin);
+        eng::x0 -=10<<eng::gSc;
+        resizeGL(eng::width, eng::height);
     } else if (cmd == "right")
     {
-        glViewport(0, 0, (GLsizei)eng::width, (GLsizei)eng::height);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
-        eng::x0 +=2<<eng::gSc;
-        eng::xmin=eng::x0-(eng::width/2.f * eng::scale);
-        eng::xmax=eng::x0+(eng::width/2.f * eng::scale);
-        eng::ymin=eng::y0-(eng::height/2.f * eng::scale);
-        eng::ymax=eng::y0+(eng::height/2.f * eng::scale);
-
-        gluOrtho2D(eng::xmin, eng::xmax, eng::ymax, eng::ymin);
+        eng::x0 +=10<<eng::gSc;
+        resizeGL(eng::width, eng::height);
     }else if (cmd == "up")
     {
-        glViewport(0, 0, (GLsizei)eng::width, (GLsizei)eng::height);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
-        eng::y0 -=2<<eng::gSc;
-        eng::xmin=eng::x0-(eng::width/2.f * eng::scale);
-        eng::xmax=eng::x0+(eng::width/2.f * eng::scale);
-        eng::ymin=eng::y0-(eng::height/2.f * eng::scale);
-        eng::ymax=eng::y0+(eng::height/2.f * eng::scale);
-
-        gluOrtho2D(eng::xmin, eng::xmax, eng::ymax, eng::ymin);
+        eng::y0 -=10<<eng::gSc;
+        resizeGL(eng::width, eng::height);
     } else if (cmd == "down")
     {
-        glViewport(0, 0, (GLsizei)eng::width, (GLsizei)eng::height);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
-        eng::y0 +=2<<eng::gSc;
-        eng::xmin=eng::x0-(eng::width/2.f * eng::scale);
-        eng::xmax=eng::x0+(eng::width/2.f * eng::scale);
-        eng::ymin=eng::y0-(eng::height/2.f * eng::scale);
-        eng::ymax=eng::y0+(eng::height/2.f * eng::scale);
-
-        gluOrtho2D(eng::xmin, eng::xmax, eng::ymax, eng::ymin);
+        eng::y0 +=10<<eng::gSc;
+        resizeGL(eng::width, eng::height);
     } else if (cmd == "grid_increment")
     {
         if (eng::gSc > 4)  eng::gSc--; else eng::gSc=9;
@@ -355,5 +291,119 @@ void GLWidget::keyPressEvent(QKeyEvent *event)
         default:
             QWidget::keyPressEvent(event);
     }
+}
+/*
+void GLWidget::mousePressEvent(QMouseEvent *event)
+{
+
+    if (event->button() == Qt::RightButton)
+    {
+
+        float dx=((eng::xmax-eng::xmin)/(float)eng::width)*event->x()+eng::xmin;
+        float dy=((eng::ymax-eng::ymin)/(float)eng::height)*event->y()+eng::ymin;
+
+        QString str="x: "+ QString::number(dx)+" y: "+QString::number(dy);
+        emit sentStatus(str);
+//        resizeGL(eng::width, eng::height);
+
+        //qDebug() << "x: " << event->x() << "Xmin: " << eng::xmin<< "X: " << ((eng::xmax-eng::xmin)/(float)eng::width)*event->x()+eng::xmin << "Xmax: " << eng::xmax;
+        //qDebug() << "y: " << event->x() << "Ymin: " << eng::ymin<< "Y: " << ((eng::ymax-eng::ymin)/(float)eng::height)*event->y()+eng::ymin << "Ymax: " << eng::ymax;
+    }
 
 }
+*/
+
+void GLWidget::wheelEvent(QWheelEvent *event)
+{
+    int numDegrees = event->delta() / 8;
+    int numSteps = numDegrees / 15;
+
+    if (event->modifiers() & Qt::ShiftModifier)
+    {
+        if (numSteps > 0)
+        {
+            if (eng::gSc > 4)  eng::gSc--; else eng::gSc=9;
+
+
+        // rebuild grid
+        int step=2<<eng::gSc;
+        eng::g.erase(eng::g.begin(), eng::g.end());
+        for (int i=eng::min; i< eng::max; i+=step )
+        {
+            eng::g.push_back((GLfloat)eng::min);
+            eng::g.push_back((GLfloat)i);
+            eng::g.push_back((GLfloat)eng::max);
+            eng::g.push_back((GLfloat)i);
+            eng::g.push_back((GLfloat)i);
+            eng::g.push_back((GLfloat)eng::max);
+            eng::g.push_back((GLfloat)i);
+            eng::g.push_back((GLfloat)eng::min);
+        }
+        eng::ar=eng::g.data();
+
+        emit gridSize(gridText(eng::gSc));
+        } else if (numSteps < 0)
+        {
+            if (eng::gSc <9)  eng::gSc++; else eng::gSc=4;
+
+        // rebuild grid
+        int step=2<<eng::gSc;
+        eng::g.erase(eng::g.begin(), eng::g.end());
+        for (int i=eng::min; i< eng::max; i+=step )
+        {
+            eng::g.push_back((GLfloat)eng::min);
+            eng::g.push_back((GLfloat)i);
+            eng::g.push_back((GLfloat)eng::max);
+            eng::g.push_back((GLfloat)i);
+            eng::g.push_back((GLfloat)i);
+            eng::g.push_back((GLfloat)eng::max);
+            eng::g.push_back((GLfloat)i);
+            eng::g.push_back((GLfloat)eng::min);
+        }
+        eng::ar=eng::g.data();
+
+        emit gridSize(gridText(eng::gSc));
+        }
+
+
+    } else {
+        if (numSteps > 0)
+            eng::scale -=5;
+        else
+            eng::scale +=5;
+    }
+
+
+    resizeGL(eng::width, eng::height);
+}
+
+void GLWidget::mouseMoveEvent(QMouseEvent *event)
+{
+    if (event->buttons() & Qt::RightButton)
+    {
+        float dx=((eng::xmax-eng::xmin)/(float)eng::width)*event->x()+eng::xmin;
+        float dy=((eng::ymax-eng::ymin)/(float)eng::height)*event->y()+eng::ymin;
+
+        QString str="x: "+ QString::number(dx)+" y: "+QString::number(dy);
+        emit sentStatus(str);
+
+        dx=(dx-eng::x0);///10.f;
+        dy=dy-eng::y0;
+        static float last_x=dx;
+        static float last_y=dy;
+        if (abs(last_x-dx) <70 && abs(last_y-dy) <70)
+        {
+            eng::x0-=(last_x-dx);
+            eng::y0-=(last_y-dy);
+        };
+
+        resizeGL(eng::width, eng::height);
+       /// qDebug() << "x: " << event->x() << "Xmin: " << eng::xmin<< "X: " << eng::x0 << "Xmax: " << eng::xmax;
+       last_x=dx;
+       last_y=dy;
+    }
+
+
+}
+
+

@@ -20,7 +20,7 @@ SOURCES += main.cpp\
     ../blud2e/conver.cpp \
     ../blud2e/obj.cpp
 
-LIBS += -L/usr/lib64 -lGLU -lglut
+LIBS += -L/usr/lib64 -lGLU -lglut -lz
 
 CONFIG += debug
 

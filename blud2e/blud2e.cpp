@@ -77,6 +77,17 @@ int main(int argc, char *argv[]) {
             };
             infoSector=-1; blood_filemap = argv[2];	duke_filemap=argv[3]; mode="export";
         };
+
+        if ( std::string(argv[1]) == "-t" || std::string(argv[1]) == "--test" )
+                {
+                    if (!fileExists(argv[2]))
+                    {
+                        std::cout << "ERROR: file: " << argv[2] << " doesn't exist!" << std::endl;
+                        return EXIT_FAILURE;
+                    };
+                    blood_filemap = argv[2]; duke_filemap  = argv[3];mode="testing";
+
+                };
     };
 
     if ((argc == 5) && ( std::string(argv[1]) == "-e" || std::string(argv[1]) == "--export" ))
@@ -121,7 +132,16 @@ int main(int argc, char *argv[]) {
             std::cerr << "ERROR: couldn't write file : sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
             return EXIT_FAILURE;
         }
-    };
+    } else if ( mode == "testing")
+    {
+        std::cout << "Try saving map into a Blood format..." <<std::endl;
+        if (map.saveToBlood(duke_filemap, refer) < 0)
+        {
+            std::cerr << "ERROR: couldn't write to Blood format" << std::endl;
+            std::cerr << refer << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
 
     std::cout << refer << std::endl;
     return EXIT_SUCCESS;

@@ -8,7 +8,7 @@ TARGET=blud2e
 	$(CC) -c -o $@ $< $(CFLAGS)
 	
 all:	$(OBJ)
-	$(CC)  -o $(TARGET)  $^ $(CFLAGS)
+	$(CC)  -o $(TARGET) -lz  $^ $(CFLAGS)
 
 clean:
 	@rm -v $(OBJ) $(TARGET)

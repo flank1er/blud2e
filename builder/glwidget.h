@@ -6,7 +6,6 @@
 #include <QTimer>
 #include <QDebug>
 #include <QObject>
-
 #include <string>
 
 //#include <GL/glew.h>
@@ -20,7 +19,10 @@
 
 class B2E : public blud2e
 {
+private:
+
 public:
+
 
 private:
 };
@@ -38,12 +40,12 @@ public:
     B2E map;
 public slots:
     void chng_map(QString);
-    void init_map(bool);
     void KeyHandler(QString);
 
 signals:
     //void sectorsChanged(const QString);
     void gridSize(QString value);
+    void sentStatus(QString value);
 
 private:
     QTimer timer;
@@ -54,6 +56,9 @@ private:
 
 protected:
     void keyPressEvent(QKeyEvent *event);
+    //void mousePressEvent(QMouseEvent *event);
+    void wheelEvent(QWheelEvent* event);
+    void mouseMoveEvent(QMouseEvent* event);
 };
 
 inline QString gridText(int grid)

@@ -1511,7 +1511,7 @@ void blud2e::getRedOutline(std::vector<GLfloat>& w)
 
 void blud2e::getPointsOutline(std::vector<GLfloat>& p)
 {
-    p.erase(p.begin(), p.end()); // format c:
+   p.erase(p.begin(), p.end()); // format c:
    if (!isEmpty())
    {
         for (auto T : spV)
@@ -1521,3 +1521,5 @@ void blud2e::getPointsOutline(std::vector<GLfloat>& p)
         }
    }
 }
+
+

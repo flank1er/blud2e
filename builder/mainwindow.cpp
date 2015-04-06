@@ -204,6 +204,7 @@ MainWindow::MainWindow(QWidget *parent) :
     l10->setSimpleGrayText("flags (hex): ");
     sb4->setMinimumWidth(45);
 
+    connect(ui->widget, SIGNAL(sentStatus(QString)), ui->statusBar, SLOT(showMessage(QString)));
     connect(ui->widget, SIGNAL(gridSize(QString)), gridLabel, SLOT(setText(QString)));
     connect(this, SIGNAL(KeyPressed(QString)), ui->widget, SLOT(KeyHandler(QString)));
     connect(this, SIGNAL(RebuildMap(QString)), ui->widget, SLOT(chng_map(QString)));
