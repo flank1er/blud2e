@@ -4,23 +4,19 @@
    It's fork by blud2b.c, HTTP://blood.sourceforge.net with additional features
    License: GPL v.3
 */
-
 #include <algorithm>
-#include <fstream>
 #include <functional>
 #include <iostream>
 #include <iterator>
 #include <numeric>
-#include <iostream>
-#include <cassert>
-#include <string>
 #include <map>
-#include <climits>
 #include <sstream>
+#include <iostream>
+#include <string>
+#include <fstream>
 
 #include "blud2e.h"
 
-#include <cassert>
 #include <glm/gtc/matrix_transform.hpp>
 #include <sys/stat.h> // check that file exists
 #include <zlib.h>
@@ -96,16 +92,14 @@ bool fileExists(const char* filename)
     return false;
 };
 
-int DecryptBuffer (unsigned char* Buffer, const size_t DataSize, unsigned char DecryptKey) {
+int DecryptBuffer (unsigned char* Buffer, const size_t DataSize, unsigned char DecryptKey)
+{
+    if (!isEncrypted || Buffer == NULL)
+        return EXIT_FAILURE;
 
-	assert (Buffer != NULL);
-	// If the map isn't encrypted
-	if (! isEncrypted)
-		return 1;
-	// Decryption
 	for (unsigned short i = 0; i < DataSize; i++)
         	Buffer[i] ^= (unsigned char)(DecryptKey + i);
-	return 0;
+    return EXIT_SUCCESS;
 };
 
 template<typename T, typename T1> void writeVector(T &the_vector, T1 &chuck, std::ofstream &file)
@@ -131,64 +125,64 @@ int read_string(std::vector<std::string> &words, std::ifstream& in) {
 };
 
 ///////----- M A P    C L A S S ////////////////////////////
-void blud2e::showInfo(std::string& ret) {
-    std::stringstream buff;
-    buff << "===== MAP INFO ============\n";
-    buff << "Initial position: \n";
-    buff <<"startX: " << dh.X  << "\n";
-    buff << "startY: " << dh.Y  << "\n";
-    buff << "startZ: " << dh.Z  << "\n";
-    buff << "startAngle: " << dh.angle  << std::endl
+void blud2e::showInfo(std::stringstream& ret) {
+    if (!isEmpty())
+    {
+    ret << "===== MAP INFO ============\n";
+    ret << "Initial position: \n";
+    ret <<"startX: " << dh.X  << "\n";
+    ret << "startY: " << dh.Y  << "\n";
+    ret << "startZ: " << dh.Z  << "\n";
+    ret << "startAngle: " << dh.angle  << std::endl
          << "sectorNum: " << dh.sector  << std::endl;
         if (isEncrypted)
         {
-            buff << std::endl << "Encrypted: yes" << std::endl;
-            buff << "Map revision: " << Revision  << std::endl;
+            ret << std::endl << "Encrypted: yes" << std::endl;
+            ret << "Map revision: " << Revision  << std::endl;
         } else
-            buff << std::endl << "Encrypted: no" << std::endl;
+            ret << std::endl << "Encrypted: no" << std::endl;
 
-    buff << "map version: " << dh.version << std::endl;
-    buff << "amount Sectors: " << sV.size()  << std::endl;
-    buff << "amount Walls: " << wV.size()  << std::endl;
-    buff << "amount Sprites: " << spV.size()  << std::endl;
+    ret << "map version: " << dh.version << std::endl;
+    ret << "amount Sectors: " << sV.size()  << std::endl;
+    ret << "amount Walls: " << wV.size()  << std::endl;
+    ret << "amount Sprites: " << spV.size()  << std::endl;
+    } else {
+        ret << " ERROR: view info about map impossible, because  map is empty!" <<std::endl;
 
-    ret+=buff.str();
+    }
 };
 
 ////////////////////// W R I T E ////////////////////////////////////
-int  blud2e::write(char *filename) {
+int  blud2e::write(char *filename, std::stringstream& referback) {
 
     std::ofstream out(filename, std::ofstream::binary);
     if (out.is_open())
     {
-    assert(sizeof(Sector) == size_sector && sizeof(Sprite)  == size_sprite &&
-        sizeof(Wall) == size_wall && sizeof(dh) == 20);
+        if (sizeof(Sector) != size_sector || sizeof(Sprite)  != size_sprite || sizeof(Wall) != size_wall || sizeof(dh) != 20)
+        {
+            referback << "ERROR: Incorrect size of types" << std::endl;
+            out.close();
+            return EXIT_FAILURE;
+        }
 
-    out.write((char*)(&dh), sizeof(dh));
+        out.write((char*)(&dh), sizeof(dh));
 
-    Sector newSec; writeVector(sV, newSec, out);
-    Wall newWall; writeVector(wV, newWall, out);
-    Sprite newSpr; writeVector(spV, newSpr, out);
+        Sector newSec; writeVector(sV, newSec, out);
+        Wall newWall; writeVector(wV, newWall, out);
+        Sprite newSpr; writeVector(spV, newSpr, out);
 
-	out.close();
-	} else {
-        std::cerr << "ERROR: can't open file " << *filename << " for write!" <<SE;
-        return -1;
+        out.close();
+     } else {
+        referback << "ERROR: can't open file " << *filename << " for write!" <<std::endl;
+        return EXIT_FAILURE;
 	}
-
-    //wV.erase(wV.begin(), wV.end());
-    //spV.erase(spV.begin(), spV.end());
-    //sV.erase(sV.begin(), sV.end());
-    return 0;
+    return EXIT_SUCCESS;
 };
 
 ////////////////// R E A D /////////////////////////////////////////////
-int blud2e::read(char *filename, std::string& ret)
+int blud2e::read(char *filename, std::stringstream& msg)
 {
-	// open file
-    std::stringstream buff;
-	std::ifstream in (filename, std::ifstream::binary);
-
+    std::ifstream in (filename, std::ifstream::binary);
 	if (in.is_open())
 	{
 		unsigned short amountSectors, amountWalls, amountSprites;
@@ -199,7 +193,7 @@ int blud2e::read(char *filename, std::string& ret)
 		in.seekg (0, in.beg);
 
         if (lengthMap <26) {
-            ret+="ERROR: lenght of map is too small!\n";
+            msg << "ERROR: lenght of map is too small!" << std::endl;
             return EXIT_FAILURE;
         }
 
@@ -213,7 +207,7 @@ int blud2e::read(char *filename, std::string& ret)
 		// if Blood map format
 		if ( (sign[0] ^ sign[1] ^ sign[2] ^ sign[3]) == 0x59 )
             {
-                buff << "Blood MAP format detection..." <<std::endl;
+                msg << "Blood MAP format detection..." << std::endl;
                 if (sign[4] == 3 && sign[5] == 6 )
                     dh.version=63;
                 else if (sign[4] == 0 && sign[5] == 7)
@@ -222,9 +216,9 @@ int blud2e::read(char *filename, std::string& ret)
                     isEncrypted=true;
                 } else
                 {
-                    ret+= "\nDecryptor can only handle map versions 6.3 and 7.0.\n";
-                    ret+="Try bringing the map up in the latest version of mapedit, then save it.\n";
-                    ret+="This should produce a 7.0 version map, which Decryptor CAN convert to build.\n";
+                    msg << "\nDecryptor can only handle map versions 6.3 and 7.0.\n";
+                    msg << "Try bringing the map up in the latest version of mapedit, then save it.\n";
+                    msg << "This should produce a 7.0 version map, which Decryptor CAN convert to build.\n";
                     in.close();
                     return EXIT_FAILURE;
                 };
@@ -235,21 +229,16 @@ int blud2e::read(char *filename, std::string& ret)
                 DecryptBuffer ((unsigned char*)ptr, size_firstHeader, 0x4D);
                 firstHeader &hd1=*(firstHeader*)Buffer;
 
-                dh.X=hd1.startX;
-                dh.Y=hd1.startY;
-                dh.Z=hd1.startZ;
-                dh.angle=hd1.startAngle;
-                dh.sector=hd1.sectorNum;
+                dh.X=hd1.startX;  dh.Y=hd1.startY;  dh.Z=hd1.startZ;
+                dh.angle=hd1.startAngle;  dh.sector=hd1.sectorNum;
                 unsigned int NbUnknownElements = (1 << hd1.unknownElts);
                 elm=hd1.unknownElts;
 
-                buff << "count unknownElts: " << NbUnknownElements << std::endl;
+                msg << "count unknownElts: " << NbUnknownElements << std::endl;
 
                 // seek second header
-                //in.seekg(size_secondHeader, in.cur);
-                in.read(ptr,size_secondHeader);
-                hd2 &sh1=*(hd2*)Buffer;
-                sh=sh1;
+                in.seekg(size_secondHeader, in.cur);
+
                 // read third header
                 in.read(ptr,size_thirdHeader);
                 DecryptBuffer ((unsigned char*)ptr, size_thirdHeader, 0x68);
@@ -262,22 +251,19 @@ int blud2e::read(char *filename, std::string& ret)
                 // seek to position to begin of first sector
                 long offset = (isEncrypted) ? size_extra : 0;
                 offset += (NbUnknownElements * size_unknownElts);
-                //std::cout << "offset: " << offset;
-                //in.seekg(offset, in.cur);
-                in.read(ptr,offset);
-                hd4 &sh4=*(hd4*)Buffer;
-                fh=sh4;
+                // go to begin the first sector
+                in.seekg(offset, in.cur);
            } else
            {
                 in.seekg(0, in.beg);
                 in.read((char*)&dh, sizeof(dh));
                 if ( dh.version < 6 && dh.version > 10 )
                 {
-                     ret+= "ERROR: Incorrect format file!\n";
+                     msg << "ERROR: Incorrect format file!\n";
                      in.close();
-                     return -1;
+                     return EXIT_FAILURE;
                 };
-                buff << "Duke MAP format detection..." <<std::endl;
+                msg << "Duke MAP format detection..." <<std::endl;
                 in.read((char*)&amountSectors, sizeof(amountSectors));
                 blood_format=false;
            };
@@ -344,25 +330,19 @@ int blud2e::read(char *filename, std::string& ret)
                 };
                 spV.push_back(SP);
             };
-            std::string rf;
-            showInfo(rf); //???? ret??
-            buff << rf;
+            showInfo(msg); //???? re
         } else{
-            ret+= "ERROR: can't open file: "; ret+= std::string(filename); ret+="\n";
-            return -1;
+            msg << "ERROR: can't open file: " << filename << std::endl;
+            return EXIT_FAILURE;
         };
 
 	in.close();
-    ret+=buff.str();
     return EXIT_SUCCESS;
 };
 
-int blud2e::saveToBlood(char* filename, std::string& ret)
+int blud2e::write_v7B(char* filename, std::stringstream& msg)
 {
-    // open file
-    std::stringstream buff;
     std::ofstream out (filename, std::ofstream::binary);
-
     if (out.is_open())
     {        
         Revision++;
@@ -471,16 +451,15 @@ int blud2e::saveToBlood(char* filename, std::string& ret)
         out.write((char*)&crc,4);
     } else
     {
-        ret+= "ERROR: can't  write to file: "; ret+= std::string(filename); ret+="\n";
+        msg <<  "ERROR: can't  write to file: " << filename << std::endl;
         return EXIT_FAILURE;
     }
     out.close();
-    ret+=buff.str();
     return EXIT_SUCCESS;
 }
 
 ///////////////////  S H O W ///////////////////////////////////////////
-void blud2e::printSector(int  num, bool blood)
+void blud2e::printSector(int  num, bool blood, std::stringstream& msg)
 {
     /// prepare
     std::map<int, std::string> secType = {{600, "Z Motion"}, {0, "Normal"}};
@@ -488,85 +467,34 @@ void blud2e::printSector(int  num, bool blood)
 		{500, "Wall Link"}, {501, "Wall stack"}, {511, "Gib Wall"}};
 	std::map<int, std::string> spriteType = {{0, "Decoration"}, {1, "Player start" }};
 	// check range of the nummber
-	if ( (unsigned int)num >= sV.size())
+    if (num >= getSectors())
 	{
-		std::cerr << "ERROR: number of sector greater than you number!" << std::endl;
-
+        msg << "ERROR: number of sector greater than you number!" << std::endl;
 		return;
     };
 
-	std::cout << "----------------------------------" << std::endl;
-	std::cout << "Sector# " << num << std::endl;
+    msg << "----------------------------------" << std::endl;
+    msg << "Sector# " << num << std::endl;
 
-	// main body /////////////////////////////////////////////////////////////////
-	sV.at(num).print();
+    // MAIN BODY ///////
+    sV.at(num).print(msg);
 
     for(auto it=wV.begin()+sV.at(num).wallptr; it < wV.begin()+sV.at(num).wallptr+sV.at(num).wallnum; it++)
     {
-
-        it->print();
-       // std::cout << "nextPoint: " << it->nextPoint->refer << std::endl;
-        //std::cout << "previousPoint: " <<  it->prePoint->refer << std::endl;
+        it->print(msg);
     };
 
     for( auto T: spV)
-//        if ( T.inSector == (sV.begin()+num))
-        if ( T.sectnum == num)
-			T.print();
-///////////////// CUT HERE ////////////////////////////////////////////
-  prepare();
-
-    std::cout << "loops: " << sV.at(num).loops.size() <<  std::endl;
-    std::cout << "generic: " << sV.at(num).generic->marker-wV.begin() <<  std::endl;
-
-    if (sV.at(num).generic->property("proper"))
-        std::cout << "Sector is proper" << std::endl;
-    if (sV.at(num).generic->property("generic"))
-        std::cout << "Sector is generic" << std::endl;
-    if (sV.at(num).generic->property("rectangle"))
-        std::cout << "Sector is rectangle" << std::endl;
-    if (sV.at(num).generic->property("inner"))
-        std::cout << "Sector is inner" << std::endl;
-    if (sV.at(num).generic->property("loop"))
-        std::cout << "Sector is loop" << std::endl;
-
-    std::vector<int> sprites=findAllSprites(sV.begin()+num);
-    std::cout << "sprites: " << sprites.size() << std::endl;
-    for(auto I: sprites) std::cout << I << " "; std::cout<<std::endl;
-
-    glm::vec3 orig=getRndPosition(sV.begin()+num);
-    std::cout << "Origin x: " << orig.x << " Origin y: " << orig.y << std::endl;
-
-    SC << "wall amount: "<< sV.at(num).wall_count() << SE;
-    //UNIT el(wV, sV, spV);
-    //el.is_set(spV.begin());
-    //std::cout << "type: " << typeid(*spV.begin()).name() << std::endl;
-
-    //set_it(a, wV.begin()+10);
-
-    //std::cout << "name: " << a.name << std::endl;
-    //void* ptr=get_it(a);
-    //td::vector<unionWall>::iterator ptr1=reinterpret_cast<std::vector<unionWall>::iterator&>(ptr);
-
-
-/*
-    std::vector<unionWall>::iterator& ptr=dynamic_cast<std::vector<unionWall>::iterator&>(a);
-    ptr=wV.begin()+10;
-
-    std::vector<unionWall>::iterator& ptr1=dynamic_cast<std::vector<unionWall>::iterator&>(a);
-    void* ptr2=dynamic_cast<std::vector<unionWall>::iterator*>(&a);
-    ptr2=dynamic_cast<std::vector<unionSector>::iterator*>(&a);
-    std::vector<unionSector>::iterator& ptr3=reinterpret_cast<std::vector<unionSector>::iterator&>(ptr2);
-*/
-
-//    std::vector<unionWall>::iterator& x0=get_it(a);
-
-    //std::cout << "ptr: " << ptr1-wV.begin() << std::endl;
-   finish();
-
+    {
+        if ( T.sectnum == num)  T.print(msg);
+    };
 };
 
-void Sprite::print() {
+void Sprite::print(std::stringstream& msg) {
+    std::stringstream ss;
+    std::streambuf *coutbuf=std::cout.rdbuf(); // redirection output of std::cout to file
+    std::cout.rdbuf(ss.rdbuf());
+
 	std::cout  << "-----SPRITE----------------------" << std::endl;
     SHOW(x); SHOW(y); SHOW(z);
     SHOW(cstat);
@@ -579,9 +507,14 @@ void Sprite::print() {
     SHOW(sectnum); SHOW(statnum);
     SHOW(ang); SHOW(owner); SHOW(xvel); SHOW(yvel); SHOW(zvel);
     SHOW(lotag); SHOW(hitag); SHOW(extra);
+    std::cout.rdbuf(coutbuf);
+    msg <<ss.str();
 };
 
-void Sector::print() {
+void Sector::print(std::stringstream& msg) {
+    std::stringstream ss;
+    std::streambuf *coutbuf=std::cout.rdbuf(); // redirection output of std::cout to file
+    std::cout.rdbuf(ss.rdbuf());
 	std::cout  << "-----SECTOR----------------------" << std::endl;
     SHOW(wallptr); SHOW(wallnum);
     SHOW(ceilingz); SHOW(floorz);
@@ -594,9 +527,14 @@ void Sector::print() {
     SHOW(floorpal); SHOW(floorxpanning); SHOW(floorypanning);
     SHOW(visibility); SHOW(filler); // Filler "should" == 0
     SHOW(lotag); SHOW(hitag); SHOW(extra);
+    std::cout.rdbuf(coutbuf);
+    msg <<ss.str();
 };
 
-void Wall::print() {
+void Wall::print(std::stringstream& msg) {
+    std::stringstream ss;
+    std::streambuf *coutbuf=std::cout.rdbuf(); // redirection output of std::cout to file
+    std::cout.rdbuf(ss.rdbuf());
 	std::cout  << "-----WALL----------------------" << std::endl;
     SHOW(x); SHOW(y);
     SHOW(point2); SHOW(nextwall); SHOW(nextsector); SHOW(cstat);
@@ -604,14 +542,19 @@ void Wall::print() {
     SHOW(shade);
     SHOW(pal); SHOW(xrepeat); SHOW(yrepeat); SHOW(xpanning); SHOW(ypanning);
     SHOW(lotag); SHOW(hitag); SHOW(extra);
+    std::cout.rdbuf(coutbuf);
+    msg <<ss.str();
 };
 
-void unionSector::print()
+void unionSector::print(std::stringstream& msg)
 {
-    Sector::print();
+    Sector::print(msg);
     if (!over)
         return;
 
+    std::stringstream ss;
+    std::streambuf *coutbuf=std::cout.rdbuf(); // redirection output of std::cout to file
+    std::cout.rdbuf(ss.rdbuf());
 	SHOW(refer);
     SHOW(state);
     // trigger data
@@ -685,15 +628,19 @@ void unionSector::print()
     SHOW( upperLinkZ);
     SHOW(lowerLink);
     SHOW( lowerLinkZ);
+    std::cout.rdbuf(coutbuf);
+    msg <<ss.str();
 };
 
 
-void unionSprite::print()
+void unionSprite::print(std::stringstream& msg)
 {
-    Sprite::print();
+    Sprite::print(msg);
     if (!over)
         return;
-
+    std::stringstream ss;
+    std::streambuf *coutbuf=std::cout.rdbuf(); // redirection output of std::cout to file
+    std::cout.rdbuf(ss.rdbuf());
 	std::cout  << "-----xSPRITE----------------------" << std::endl;
 	std::map<int, std::string> respawn_str={{0, "Option"}, {1,"Never"}, {2, "Always"} , {3, "Perman"}};
 	std::map<int, std::string>  wave_str={{0, "Sine"},{1,"Linear"}, {2,"SlowOff"}, {3,"SlowOn"}};
@@ -766,15 +713,21 @@ void unionSprite::print()
     SHOW(unused2);
     SHOW(stateTimer);
     SHOW(aiState);
+    std::cout.rdbuf(coutbuf);
+    msg <<ss.str();
 };
 
 
-void unionWall::print()
+void unionWall::print(std::stringstream& msg)
 {
-    Wall::print();
-
+    Wall::print(msg);
     if (!over)
         return;
+
+    std::stringstream ss;
+    std::streambuf *coutbuf=std::cout.rdbuf(); // redirection output of std::cout to file
+    std::cout.rdbuf(ss.rdbuf());
+
 
 	std::map<bool, std::string> toggle={{true, "ON"}, {false, "OFF"}};
 	std::map<int, std::string> cmd={{0, "OFF"}, {1,"ON"}, {2,"State"}, {3,"Toggle"},{4,"!State"},
@@ -820,11 +773,18 @@ void unionWall::print()
     SHOW(triggerReserved2);
     SHOW(xpanFrac);
     SHOW(ypanFrac);
-    SHOW(pad);
+    SHOW(pad);    
+    std::cout.rdbuf(coutbuf);
+    msg <<ss.str();
 };
 
 int soundTable::open(std::string source_file, std::string target_file, std::string textures_file) {
-	for (int i=0; i<3; i++) {
+    source.erase(source.begin(), source.end());
+    target.erase(target.begin(), target.end());
+    texture.erase(texture.begin(), texture.end());
+
+    for (int i=0; i<3; i++)
+    {
 		std::string filename;
 		if (i == 0 )
 			filename = source_file;
@@ -833,73 +793,9 @@ int soundTable::open(std::string source_file, std::string target_file, std::stri
 		else filename=textures_file;
 
 ///		COUNT OF LINES ////////////////////
-
 		std::ifstream f(filename, std::ifstream::binary);
-		if (f.is_open()) {
-		f.seekg(0,f.end);
-		int l=f.tellg();
-		f.seekg(0,f.beg);
-		int lines=0;
-		char * buf = new char;
-		bool if_space=false;
-
-		for (int i=0;i<l-1; i++) {
-			f.read(buf,1);
-			if ( *buf == '\n' || *buf == ' ' || *buf == '\t' )
-				if_space=true;
-			else if (if_space) {
-				if_space=false;
-				lines++;
-			};
-		};
-
-		delete buf;
-		f.close();
-		lines+=10; // overflow protect
-
-		std::ifstream in(filename);
-		std::vector<std::string> w(lines);
-		int num=read_string(w,in);
-		w.resize(num);
-		in.close();
-
-		auto it=w.begin();
-		while(it != w.end()) {
-			if ( *it == "define" ) {
-				++it;
-				if (i == 1) {
-					std::string str=*it;
-					std::string str1=*(++it);
-					int d=atoi(str1.c_str());
-					target[str]=d;
-				} else {
-					std::string str=*it;
-					std::string str1=*(++it);
-					int d=atoi(str1.c_str());
-					if (i == 0)
-						source[d]=str;
-					else
-						texture[d]=str;
-				};
-			};
-			++it;
-		};
-		w.erase(w.begin(), w.end());
-    } else
-    {
-        //std::cerr << "ERROR: can't open file: " << filename << std::endl;
-        return -1;
-    };
-	};
-	return 0;
-};
-
-int blud2e::openPicsTable(std::string filename, std::map<int, glm::ivec2> &table){
-///		COUNT OF LINES ////////////////////
-
-		std::ifstream f(filename, std::ifstream::binary);
-		if (f.is_open())
-		{
+        if (f.is_open())
+        {
             f.seekg(0,f.end);
             int l=f.tellg();
             f.seekg(0,f.beg);
@@ -909,7 +805,8 @@ int blud2e::openPicsTable(std::string filename, std::map<int, glm::ivec2> &table
 
             for (int i=0;i<l-1; i++) {
                 f.read(buf,1);
-                if ( *buf == '\n' || *buf == ' ' || *buf == '\t' ) if_space=true;
+                if ( *buf == '\n' || *buf == ' ' || *buf == '\t' )
+                    if_space=true;
                 else if (if_space) {
                     if_space=false;
                     lines++;
@@ -929,36 +826,101 @@ int blud2e::openPicsTable(std::string filename, std::map<int, glm::ivec2> &table
             auto it=w.begin();
             while(it != w.end())
             {
-                int d0, d1, d2;
-                std::string str;
-                if ( *it == "define" && (it+3)<w.end())
+                if ( *it == "define" )
                 {
-                    str=*(++it); d0=atoi(str.c_str());
-                    str=*(++it); d1=atoi(str.c_str());
-                    str=*(++it); d2=atoi(str.c_str());
-                    glm::ivec2 v=glm::ivec2(d1,d2);
-                    table[d0]=v;
+                    ++it;
+                    if (i == 1) {
+                        std::string str=*it;
+                        std::string str1=*(++it);
+                        int d=atoi(str1.c_str());
+                        target[str]=d;
+                    } else {
+                        std::string str=*it;
+                        std::string str1=*(++it);
+                        int d=atoi(str1.c_str());
+                        if (i == 0)
+                            source[d]=str;
+                        else
+                            texture[d]=str;
+                    };
                 };
                 ++it;
             };
             w.erase(w.begin(), w.end());
-        } else
-        {
+        } else {
             //std::cerr << "ERROR: can't open file: " << filename << std::endl;
-            return -1;
+            return EXIT_FAILURE;
         };
-    return 0;
+	};
+    return EXIT_SUCCESS;
 };
 
-void blud2e::show()
+int blud2e::openPicsTable(std::string filename, std::map<int, glm::ivec2> &table)
+{
+    table.erase(table.begin(), table.end());
+    ///		COUNT OF LINES ////////////////////
+    std::ifstream f(filename, std::ifstream::binary);
+    if (f.is_open())
+    {
+        f.seekg(0,f.end);
+        int l=f.tellg();
+        f.seekg(0,f.beg);
+        int lines=0;
+        char * buf = new char;
+        bool if_space=false;
+
+        for (int i=0;i<l-1; i++) {
+            f.read(buf,1);
+            if ( *buf == '\n' || *buf == ' ' || *buf == '\t' ) if_space=true;
+            else if (if_space) {
+                if_space=false;
+                lines++;
+            };
+        };
+
+        delete buf;
+        f.close();
+        lines+=10; // overflow protect
+
+        std::ifstream in(filename);
+        std::vector<std::string> w(lines);
+        int num=read_string(w,in);
+        w.resize(num);
+        in.close();
+
+        auto it=w.begin();
+        while(it != w.end())
+        {
+            int d0, d1, d2;
+            std::string str;
+            if ( *it == "define" && (it+3)<w.end())
+            {
+                str=*(++it); d0=atoi(str.c_str());
+                str=*(++it); d1=atoi(str.c_str());
+                str=*(++it); d2=atoi(str.c_str());
+                glm::ivec2 v=glm::ivec2(d1,d2);
+                table[d0]=v;
+            };
+            ++it;
+        };
+        w.erase(w.begin(), w.end());
+    } else
+    {
+        //std::cerr << "ERROR: can't open file: " << filename << std::endl;
+        return EXIT_FAILURE;
+    };
+    return EXIT_SUCCESS;
+};
+
+void blud2e::show(std::stringstream& msg)
 {
     for (auto T: sV)
-        T.print();
+        T.print(msg);
 
     for (auto T: wV)
-        T.print();
+        T.print(msg);
 
     for (auto T: spV)
-        T.print();
+        T.print(msg);
 
 };

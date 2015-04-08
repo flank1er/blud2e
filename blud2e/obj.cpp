@@ -5,6 +5,7 @@
 #include <iterator>
 #include <numeric>
 #include <set>
+
 #include "blud2e.h"
 #include <glm/glm.hpp>
 
@@ -23,14 +24,18 @@ class OBJEXP
         vertex++;
     };
 
-    void printTexCoor(glm::vec3 x0,glm::vec3 x1,glm::vec3 x2,glm::vec3 x3) {
-        assert(resY != 0 && resX != 0);
+    int printTexCoor(glm::vec3 x0,glm::vec3 x1,glm::vec3 x2,glm::vec3 x3) {
+        if (resY == 0 || resX == 0)
+        {
+            return EXIT_FAILURE;
+        }
         float v1=glm::distance(x1.z, x0.z)*scaleY*4/resY;
         float v2=glm::distance(x2.z, x3.z)*scaleY*4/resY;
         float v4=scaleX*8.f/resX;
         std::cout << "vt "<< offsetX<<" "<< offsetY << std::endl << "vt "<< v4+offsetX << " "<< offsetY<< std::endl <<
         "vt "<< v4+offsetX<< " "<< v2+offsetY << std::endl << "vt "<< offsetX<<" " << v1+offsetY<< std::endl;
         texcoor+=4;
+        return EXIT_SUCCESS;
     };
 
     void printNormal(glm::vec3& vn){
@@ -179,15 +184,15 @@ public:
     };
 };
 
-int blud2e::extract(int num, char* filename)
+int blud2e::write_obj(int num, char* filename, std::stringstream& msg)
 {
-    OBJEXP obj;
-	if ( (unsigned int)num >= sV.size() && num != -1)
+    if (num >= getSectors())
 	{
-		std::cerr << "ERROR: number " << num << " of sector greater than you number!" << std::endl;
-		return -1;
+        msg << "ERROR: number " << num << " greater than count of sectors!" << std::endl;
+        return EXIT_FAILURE;
     };
 
+    OBJEXP obj;
     std::ofstream file(filename);
     if (file.is_open())
     {
@@ -203,10 +208,9 @@ int blud2e::extract(int num, char* filename)
         file.close();
         std::cout.rdbuf(coutbuf);
     } else {
-        std::cerr << "ERROR: can't open file " << *filename << " for write!" << SE;
-        return -1;
-
+        msg << "ERROR: can't open file " << *filename << " for write!" << std::endl;
+        return EXIT_FAILURE;
     };
-    return 0;
+    return EXIT_SUCCESS;
 };
 

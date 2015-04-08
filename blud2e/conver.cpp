@@ -1313,12 +1313,9 @@ int blud2e::finish()
     return 0;
 };
 
-int blud2e::processing(std::string& ret, const float scope=1.f) {
-    scale=scope;
-    prepare();
-    std::stringstream buff;
-
-    buff << std::endl << "Start processing..." << std::endl;
+int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
+    scale=scope; prepare();
+    msg << std::endl << "Start processing..." << std::endl;
 
     for (auto& T : spV)
     {   // parsing picnumber
@@ -1371,28 +1368,28 @@ int blud2e::processing(std::string& ret, const float scope=1.f) {
 			dh.X=T.pos.x; dh.Y=T.pos.y; dh.Z=T.pos.z;
 			dh.angle=T.ang;
 			dh.sector=(short)(T.inSector-sV.begin());
-            buff << "Start position: " << "X: " << dh.X << " Y: " << dh.Y << " Z: " << dh.Z << " Sector: " << dh.sector<< std::endl;
+            msg << "Start position: " << "X: " << dh.X << " Y: " << dh.Y << " Z: " << dh.Z << " Sector: " << dh.sector<< std::endl;
         } else if(T.isType("Hidden Exploder"))
             T.makeHiddenExploder();
 
-    makeExplosiveSector(buff);
-    makeElevatorSector(buff);
-    makeDoomDoors(buff);
-    makeSlideSector(buff);
-    makeEnterSensor(buff);
-    makeRotateSector(buff);
-    makeSlideDoors(buff);
+    makeExplosiveSector(msg);
+    makeElevatorSector(msg);
+    makeDoomDoors(msg);
+    makeSlideSector(msg);
+    makeEnterSensor(msg);
+    makeRotateSector(msg);
+    makeSlideDoors(msg);
 
-    makeController(buff);
-    makeTROR(buff);
+    makeController(msg);
+    makeTROR(msg);
 
-    check(buff);
+    check(msg);
 
     std::set<int> the_list={};
     for (auto T: sV) if (T.over && !T.done && T.lotag) the_list.insert(T.refer);
 
-    buff  <<std::endl << "undone sectors: ";
-    for (auto T: the_list) buff << T << " "; buff << std::endl;
+    msg  <<std::endl << "undone sectors: ";
+    for (auto T: the_list) msg << T << " ";msg << std::endl;
 
     // remove sprites
 	std::set<int> robj{9117, 5873, 7202, 7451, 7452, 7642, 7643, 7644, 7645, 7646, 7647, 7648, 7649};
@@ -1404,11 +1401,9 @@ int blud2e::processing(std::string& ret, const float scope=1.f) {
         else
 			++it;
 
-    buff << std::endl << "was removed: " << (last-spV.size()) << " sprites" << std::endl;
+    msg << std::endl << "was removed: " << (last-spV.size()) << " sprites" << std::endl;
 
     finish();
-
-    ret +=buff.str();
     return EXIT_SUCCESS;
 };
 

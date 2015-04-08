@@ -289,7 +289,7 @@ void MainWindow::on_action_Import_triggered()
     if (inputFile.isEmpty()) return;
 
     QString referMessage;
-    std::string refer;
+    std::stringstream refer;
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Reading map file");
     //msgBox.setMinimumWidth(400); //don't work(
@@ -316,7 +316,7 @@ void MainWindow::on_action_Import_triggered()
         // conversion area
         ////////////////////////////////
         ui->widget->map.processing(refer, 0.75f);
-        referMessage=QString::fromStdString(refer);
+        referMessage=QString::fromStdString(refer.str());
         // change window title
         QStringList parts = inputFile.split("/");
         QString lastBit = parts.at(parts.size()-1);
@@ -376,7 +376,7 @@ void MainWindow::on_action_Open_triggered()
     this->setWindowTitle(title);
 
     QString referMessage;
-    std::string refer;
+    std::stringstream refer;
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Reading map file");
     //msgBox.setMinimumWidth(400); //don't work(
@@ -407,7 +407,7 @@ void MainWindow::on_action_Open_triggered()
         this->setWindowTitle(title);
 
         ui->widget->map.prepare();
-        referMessage=QString::fromStdString(refer);
+        referMessage=QString::fromStdString(refer.str());
 
         QString statusText=sm(ui->widget->map.getSectors(),ui->widget->map.getWalls(), ui->widget->map.getSprites());
         statLabel->setText(statusText);
@@ -456,8 +456,8 @@ void MainWindow::on_action_Save_triggered()
 
       const char * filemap = saveFileName.toStdString().c_str();
       char* fn=(char*)filemap;
-
-      if (ui->widget->map.write(fn) >= 0)
+      std::stringstream refer;
+      if (ui->widget->map.write(fn,refer) >= 0)
       {
           // change window title
           QStringList parts = saveFileName.split("/");
@@ -599,12 +599,12 @@ void MainWindow::on_action_Export_triggered()
     }
 
       QMessageBox msgBox(this);
-      QString refer;
+      std::stringstream refer;
 
       const char * filemap = saveFileName.toStdString().c_str();
       char* fn=(char*)filemap;
 
-      if (ui->widget->map.extract(150, fn) >= 0)
+      if (ui->widget->map.write_obj(150, fn, refer) >= 0)
       {
           msgBox.setText(tr("<center><font size=18 color=green> Success! </font></center>"));
           msgBox.setIconPixmap(QPixmap(":/images/ok_button.png"));

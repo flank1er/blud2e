@@ -17,9 +17,9 @@ int main(int argc, char *argv[]) {
 
     blud2e map; const float version=0.7; int infoSector;
     std::string mode="blank"; char * blood_filemap;  char * duke_filemap;
-    std::string refer="";
+    std::stringstream log;
 
-	std::cerr << "\nDecryptor MAP files from Blood video game, Monolith Production, 1997(c)\n" << \
+    log << "\nDecryptor MAP files from Blood video game, Monolith Production, 1997(c)\n" << \
 	"Author: flanker\n" << \
 	"Project: Blood Crossmatching\n" << \
 	"version: " << version << "-dev" << std::endl << \
@@ -86,7 +86,6 @@ int main(int argc, char *argv[]) {
                         return EXIT_FAILURE;
                     };
                     blood_filemap = argv[2]; duke_filemap  = argv[3];mode="testing";
-
                 };
     };
 
@@ -109,41 +108,44 @@ int main(int argc, char *argv[]) {
 	};
 
 /// C O R E ///////////////////////////////
-    if ((map.sTable.open(original_sound ,sound_con_file, tex_con_file) < 0) || (map.openPicsTable(pic_file, map.targa) < 0))
+    if (!((!map.sTable.open(original_sound ,sound_con_file, tex_con_file)) && (!map.openPicsTable(pic_file, map.targa))))
     {
         std::cerr << "ERROR: couldn't open files: sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
         return EXIT_FAILURE;
     }
 
-    map.read(blood_filemap, refer);
-
-
-    if (mode == "export")
-        map.extract(infoSector, duke_filemap);
-    else if ((mode == "info" || mode == "duke_map_info") && argc == 3 )
-		map.show();
-	else if (mode == "info")
-		map.printSector(infoSector, true);
-	else if ( mode == "convert" )
-	{
-        map.processing(refer, 0.75f); // C O N V E R S I O N
-        if (map.write(duke_filemap) <0)
-        {
-            std::cerr << "ERROR: couldn't write file : sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
-            return EXIT_FAILURE;
-        }
-    } else if ( mode == "testing")
+    if (!map.read(blood_filemap, log))
     {
-        std::cout << "Try saving map into a Blood format..." <<std::endl;
-        if (map.saveToBlood(duke_filemap, refer) < 0)
+        if (mode == "export")
+            map.write_obj(infoSector, duke_filemap, log);
+        else if ((mode == "info" || mode == "duke_map_info") && argc == 3 )
+            map.show(log);
+        else if (mode == "info")
+            map.printSector(infoSector, true, log);
+        else if ( mode == "convert" )
         {
-            std::cerr << "ERROR: couldn't write to Blood format" << std::endl;
-            std::cerr << refer << std::endl;
-            return EXIT_FAILURE;
+            map.processing(log, 0.75f); // C O N V E R S I O N
+            if (map.write(duke_filemap,log) <0)
+            {
+                std::cerr << "ERROR: couldn't write file : sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
+                return EXIT_FAILURE;
+            }
+        } else if ( mode == "testing") // write to crypt Blood format. only for testing
+        {
+            std::cout << "Try saving map into a Blood format..." <<std::endl;
+            if (map.write_v7B(duke_filemap, log) < 0)
+            {
+                std::cerr << "ERROR: couldn't write to Blood format" << std::endl;
+                std::cerr << log.str() << std::endl;
+                return EXIT_FAILURE;
+            }
         }
+    } else {
+        std::cerr << log.str();
+        return EXIT_FAILURE;
     }
 
-    std::cout << refer << std::endl;
+    std::cout << log.str() << std::endl;
     return EXIT_SUCCESS;
 };
 

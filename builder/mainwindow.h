@@ -26,6 +26,7 @@
 #include <cassert>
 #include <iostream>
 #include <sys/stat.h>
+#include <sstream>
 
 #include <GL/glut.h>
 

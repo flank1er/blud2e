@@ -71,7 +71,7 @@ struct Sector {
 	unsigned char floorpal, floorxpanning, floorypanning;
 	unsigned char visibility, filler; // Filler "should" == 0
 	short lotag, hitag, extra;
-	void print();
+    void print(std::stringstream&);
 };
 
 struct xSector {
@@ -163,7 +163,7 @@ struct Sprite {
 	short sectnum, statnum;
 	short ang, owner, xvel, yvel, zvel;
 	short lotag, hitag, extra;
-    void print();
+    void print(std::stringstream&);
 };
 
 struct xSprite {
@@ -260,7 +260,7 @@ struct Wall {
 	signed char  shade;
 	unsigned char pal, xrepeat, yrepeat, xpanning, ypanning;
 	short lotag, hitag, extra;
-	void print();
+    void print(std::stringstream&);
 };
 
 struct xWall {
@@ -314,7 +314,7 @@ class unionSector;
 
 class  unionWall : public Wall, public xWall {
     public:
-        void print();
+        void print(std::stringstream&);
         bool over=false;
         bool done=false;
         glm::vec3 pos;  //position
@@ -377,7 +377,7 @@ class  unionSector : public Sector, public xSector {
     public:
         FLOOR floor;
         FLOOR ceiling;
-    	void print();
+        void print(std::stringstream&);
         bool over=false;
         bool done=false;
         bool inner=false;
@@ -409,7 +409,7 @@ class  unionSprite : public Sprite, public xSprite {
         {"Sector SFX", 709}, {"Player SFX", 711}, {"SFX Gen", 708}, {"Explode Object", 417}, {"Gib Object", 416},
         {"Dude Spawn", 18}, {"Wall Crack", 408}, {"Upper stack",11}, {"Lower stack", 12}};
     public:
-    	void print();
+        void print(std::stringstream&);
         bool over=false;
         bool done=false;
         glm::vec4 pos;
@@ -451,7 +451,7 @@ private:
     hd4 fh;
 	int lengthMap, Revision=-1; //, posX,posY, posZ;
     float scale=1.f;
-    void showInfo(std::string&);
+    void showInfo(std::stringstream&);
 
     std::vector<unionSector> sV;
     std::vector<unionWall> wV;
@@ -480,28 +480,32 @@ public:
 //std::map<std::string, int> SecNametoNumber;
 	soundTable sTable;
 	std::map<int, glm::ivec2> targa;
-	int openPicsTable(std::string filename, std::map<int, glm::ivec2> &table);
-    int read(char *filename, std::string &);
-    void printSector(int num, bool blood);
-	int write (char *filename);
-    int saveToBlood(char* filename, std::string&);
+
+	int openPicsTable(std::string filename, std::map<int, glm::ivec2> &table);    
+    int read(char *filename, std::stringstream&);
+    int write(char *filename, std::stringstream&);
+    int write_v7B(char* filename, std::stringstream&);
+    int write_obj(int, char*filename, std::stringstream&);
+
 	int prepare();
 	int finish();
-    int processing(std::string&, const float);
-	void show();
-	int extract(int, char*filename);
     int check(std::stringstream&);
-	void rm() {wV.erase(wV.begin(), wV.end());spV.erase(spV.begin(), spV.end()); sV.erase(sV.begin(), sV.end());}
+    void rm() {wV.erase(wV.begin(), wV.end());spV.erase(spV.begin(), spV.end()); sV.erase(sV.begin(), sV.end());}
+    int processing(std::stringstream&, const float);
+
+    void show(std::stringstream&);
+    void printSector(int num, bool blood,std::stringstream&);
 
     bool isEmpty() { if ((int)sV.size() == 0) return true; else return false;};
-
     int getSectors() {return (int)sV.size();};
     int getWalls() {return (int)wV.size();}
     int getSprites() {return (int)spV.size();}
 
     glm::vec3 getWallNextPos(int wall);
     glm::vec3 getWallPos(int wall);
+
     glm::vec3 getCenterMap(std::string&);
+
     void getRedOutline(std::vector<GLfloat>&);
     GLfloat* getWhiteOutline(std::vector<GLfloat>&);
     void getPointsOutline(std::vector<GLfloat>&);
