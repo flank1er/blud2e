@@ -20,8 +20,9 @@ class CHANNEL
     std::set<int> the_list;
 public:
     void add(int value) {the_list.insert(value);};
-    int operator()(int ch = -1)
-    {
+    int getSize() {return (int)the_list.size();};
+
+    int operator()(int ch = -1) {
         if (ch < 100 ||  the_list.count(ch))
         {
             ch=500;
@@ -31,6 +32,7 @@ public:
         the_list.insert(ch);
         return ch;
     };
+
 };
 
 class COLLECT
@@ -999,7 +1001,7 @@ void blud2e::Cstat()
             continue;
         };
 
-        glm::ivec2 size=targa[T.texture_id];
+        glm::ivec2 size=RS.get_resolution(T.texture_id);
         int edge=size.y*2*T.yrepeat;
 
         if (getDown.count(T.texture_id))
@@ -1040,19 +1042,19 @@ void blud2e::makeEnemies()
 
 void blud2e::makeSectorSFX(unionSprite& Sp)
 {
-    Sp.tag=glm::ivec3(sTable.trans(Sp.data1), sTable.trans(Sp.data2), -1);
+    Sp.tag=glm::ivec3(RS.trans(Sp.data1), RS.trans(Sp.data2), -1);
     Sp.shade=Sp.pal=0;
     if (Sp.isType("SFX Gen"))  // make TriggerSound
     {
         Sp.texture_id=19;
         Sp.vel.z=1;
-        Sp.tag=glm::ivec3(sTable.trans(Sp.data2), sTable.trans(Sp.data1), -1);
+        Sp.tag=glm::ivec3(RS.trans(Sp.data2), RS.trans(Sp.data1), -1);
     };
 
     if ((Sp.data3 > 0 && Sp.data4 > 0) && (Sp.data2 != Sp.data4 || Sp.data1 != Sp.data3))
     {
         unionSprite nsp = Sp;
-        nsp.tag=glm::ivec3(sTable.trans(Sp.data3), sTable.trans(Sp.data4), -1);
+        nsp.tag=glm::ivec3(RS.trans(Sp.data3), RS.trans(Sp.data4), -1);
         nsp.vel.z=1;
         nsp.pos.z=Sp.inSector->floor.z;
         spV.push_back(nsp);
@@ -1063,17 +1065,11 @@ void blud2e::makeRespawn(unionSprite& Sp)
 {
     if (Sp.isType("Explode Object") || Sp.isType("Gib Object") || enemies.count(Sp.lotag) || Sp.isType("Dude Spawn"))
     {
-        unionSprite reserved=Sp;
-        Sp.texture_id=7197;
         Sp.cstat=0;
         Sp.tag.r=type_to_pic[Sp.data1];
         if ((Sp.launch1 + Sp.launch2 + Sp.launch3 + Sp.launch4 + Sp.launch5) > 0)
             Sp.tag.g=(1-Sp.launch1)+((1-Sp.launch2)<<1)+((1-Sp.launch3)<<2)+((1-Sp.launch4)<<3)+((1-Sp.launch5)<<4);
-        if (reserved.texture_id !=7197)
-        {
-            Sp.tag.r=type_to_pic[Sp.dropId];
-            spV.push_back(reserved);
-        };
+
     };
 };
 
@@ -1083,7 +1079,7 @@ void blud2e::makeExplodeAndGib()
         if (Sp.over && (Sp.isType("Explode Object")|| (Sp.isType("Gib Object")
             && !(Sp.cstat & 0x01) && Sp.texture_id != 5778 )))
         {
-			Sp.tag=glm::ivec3(Gibs[Sp.data1], sTable.trans(Sp.data4), -1);
+            Sp.tag=glm::ivec3(Gibs[Sp.data1], RS.trans(Sp.data4), -1);
 			Sp.statnum=15;
 			Sp.clipdist=16;
 			Sp.vel.z=2; // Only Explode
@@ -1106,11 +1102,14 @@ void blud2e::makeExplodeAndGib()
         };
 };
 
-int blud2e::prepare()
+int blud2e::prepare(std::stringstream& msg)
 {
-	// din't use music ID as channel
-	for (auto it=sTable.target.begin(); it != sTable.target.end(); ++it)
-		channel.add((*it).second); // reserved channels
+    if (RS.load_tables(msg) == EXIT_FAILURE)
+    {
+        return EXIT_FAILURE;
+    }
+
+    RS.get_all_target([&](int _v) { channel.add(_v); });
 
 	for (auto& T: wV)
 	{
@@ -1270,8 +1269,39 @@ int blud2e::prepare()
         };
     };
 
+    for (auto& T: wV) {
+        T.res=RS.get_resolution(T.texture_id);
+        if (T.res.x == 0 && T.res.y == 0)
+        {
+            msg << "ERROR: not found resolution for wall texture_id: " << T.texture_id << std::endl;
+            T.res=glm::ivec2(1.f);
+        }
+    }
+    for (auto& T: spV) {
+        T.res=RS.get_resolution(T.texture_id);
+        if (T.res.x == 0 && T.res.y == 0)
+        {
+            msg << "ERROR: not found resolution for sprite texture_id: " << T.texture_id
+                << " in sector: " << T.sectnum << std::endl;
+            T.res=glm::ivec2(1.f);
+        }
+    }
+    for (auto& T: sV) {
+        T.floor.res=RS.get_resolution(T.floor.texture_id);
+        if (T.floor.res.x == 0 && T.floor.res.y == 0)
+        {
+            msg << "ERROR: not found resolution for floor texture_id: " << T.floor.texture_id << std::endl;
+            T.floor.res=glm::ivec2(1.f);
+        }
+        T.ceiling.res=RS.get_resolution(T.ceiling.texture_id);
+        if (T.ceiling.res.x == 0 && T.ceiling.res.y == 0)
+        {
+            msg << "ERROR: not found resolution for ceiling texture_id: " << T.ceiling.texture_id << std::endl;
+            T.ceiling.res=glm::ivec2(1.f);
+        }
+    };
 
-    return 0;
+    return EXIT_SUCCESS;
 };
 
 int blud2e::finish()
@@ -1314,7 +1344,14 @@ int blud2e::finish()
 };
 
 int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
-    scale=scope; prepare();
+    scale=scope;
+
+    if (prepare(msg) == EXIT_FAILURE)
+    {
+        msg << "ERROR: missing files: sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     msg << std::endl << "Start processing..." << std::endl;
 
     for (auto& T : spV)
@@ -1323,25 +1360,20 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
             T.makeLevelLocker();
         else if (T.is("FootTraces"))
             T.makeFootTraces();
-        // parsing type/lotag
         if (T.isType("Ambient SFX"))
-            T.makeAmbient(sTable.trans(T.data3), T.data2*16);
+           T.makeAmbient(RS.trans(T.data3), T.data2*16);
         else if(T.isType("WaterDrip Gen"))
-            T.makeWaterDripGen();
+           T.makeWaterDripGen();
         else if(T.isType("BloodDrip Gen"))
             T.makeBloodDripGen();
         else if(T.isType("Toggle switch") || T.isType("1-Way switch"))
-            T.tag.r=sTable.trans(T.data1);
+            T.tag.r=RS.trans(T.data1);
         else if(items.count(T.lotag) && T.launchS) // mulipalyer
             T.pal=1;
         else if(items.count(T.lotag) && T.launchT && T.launchB)
             T.pal=2;
         else if(T.isType("Sector SFX") || T.isType("SFX Gen") || T.isType("Player SFX"))
             makeSectorSFX(T);
-        //else if (T.isType("Explode Object")|| (T.isType("Gib Object") && !(T.cstat & 0x01) && T.texture_id != 5778 ))
-        //    makeExplodeAndGib(T);
-
-//        T.makeCstat();
 
         if (T.dropId > 0 || T.isType("Dude Spawn"))
             makeRespawn(T);
@@ -1349,26 +1381,20 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
 
     Cstat();
 
-    makeExplodeAndGib();
+//    makeExplodeAndGib();
     makeEnemies();
 
     // secret room
-    for (auto& T: sV)
-    {
-        if ( T.over && T.txID == 2)
-            LT=32767;
-    };
+    for (auto& T: sV) { if ( T.over && T.txID == 2)  LT=32767; };
 
-    //spV.begin()->pos=spV.begin()->pos +glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-
-////////////////////////////////////////////////////////////////////////////
     for (auto& T: spV) // get start position
         if ( T.isType("Player Start") && T.texture_id == 7642 && !T.data1)
         {
 			dh.X=T.pos.x; dh.Y=T.pos.y; dh.Z=T.pos.z;
 			dh.angle=T.ang;
 			dh.sector=(short)(T.inSector-sV.begin());
-            msg << "Start position: " << "X: " << dh.X << " Y: " << dh.Y << " Z: " << dh.Z << " Sector: " << dh.sector<< std::endl;
+            msg << "Start position: " << "X: " << dh.X << " Y: " << dh.Y << " Z: " << dh.Z
+                << " Sector: " << dh.sector<< std::endl;
         } else if(T.isType("Hidden Exploder"))
             T.makeHiddenExploder();
 
@@ -1381,8 +1407,8 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
     makeSlideDoors(msg);
 
     makeController(msg);
-    makeTROR(msg);
 
+    makeTROR(msg);
     check(msg);
 
     std::set<int> the_list={};
@@ -1425,96 +1451,8 @@ int blud2e::check(std::stringstream& refer)
     };
     if (!flag)
         refer << "check of the map structure was success." << SE;
-    return 0;
+    return EXIT_SUCCESS;
 };
 
-glm::vec3 blud2e::getWallPos(int wall)
-{
-    glm::vec3 ret=glm::vec3(0.f);
-    auto it=wV.begin()+wall;
-    if (it != wV.end())
-        ret=it->pos;
-    //else
-        //qDebug() << "MAP::getWallPos illegal argument: "<< wall;
-    return ret;
-}
-
-glm::vec3 blud2e::getWallNextPos(int wall)
-{
-    glm::vec3 ret=glm::vec3(0.f);
-    auto it=wV.begin()+wall;
-    if (it != wV.end())
-        ret=it->nextPoint->pos;
-    //else
-        //qDebug() << "MAP::getWallNextPos illegal argument: "<< wall;
-    return ret;
-}
-
-
-glm::vec3 blud2e::getCenterMap(std::string & rb)
-{
-    glm::vec3 ret=glm::vec3(0.f);
-    if (!isEmpty())
-    {
-        for (auto T: wV)  ret+=T.pos;
-        ret /=wV.size();
-    } else
-    {
-        std::string msg="ERROR: you can't get center of EMPTY map!\n";
-        rb +=msg;
-     }
-    return ret;
-}
-
-GLfloat* blud2e::getWhiteOutline(std::vector<GLfloat>& w)
-{
-    w.erase(w.begin(), w.end()); // format c:
-   if (!isEmpty())
-   {
-        for (auto T : wV)
-        {
-            if (T.nextsector < 0)
-            {
-                w.push_back((GLfloat)T.pos.x);
-                w.push_back((GLfloat)T.pos.y);
-                w.push_back((GLfloat)T.nextPoint->pos.x);
-                w.push_back((GLfloat)T.nextPoint->pos.y);
-             }
-        }
-   };
-
-   return NULL;
-}
-
-void blud2e::getRedOutline(std::vector<GLfloat>& w)
-{
-    w.erase(w.begin(), w.end()); // format c:
-   if (!isEmpty())
-   {
-        for (auto T : wV)
-        {
-            if (T.nextsector >= 0)
-            {
-                w.push_back((GLfloat)T.pos.x);
-                w.push_back((GLfloat)T.pos.y);
-                w.push_back((GLfloat)T.nextPoint->pos.x);
-                w.push_back((GLfloat)T.nextPoint->pos.y);
-             }
-        }
-   }
-}
-
-void blud2e::getPointsOutline(std::vector<GLfloat>& p)
-{
-   p.erase(p.begin(), p.end()); // format c:
-   if (!isEmpty())
-   {
-        for (auto T : spV)
-        {
-            p.push_back(T.pos.x);
-            p.push_back(T.pos.y);
-        }
-   }
-}
 
 

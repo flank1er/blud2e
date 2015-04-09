@@ -25,7 +25,6 @@ void draw_string_bitmap(void *font, const char* string) {
 //    return lst.lastIndexOf(ext, -1);
 //};
 
-
 void GLWidget::program_errors(const GLint program)
 {
     GLint length ;
@@ -52,8 +51,14 @@ GLuint GLWidget::init_shaders (GLenum type, const char *filename)
     // Using GLSL shaders, OpenGL book, page 679
 
     GLuint shader = glCreateShader(type) ;
-    GLint compiled ;
-    std::string str= textFileRead (filename) ;
+    GLint compiled;
+
+    std::string str; std::stringstream ss;
+    if (map.read_text_file_to_string(filename, str, ss) == EXIT_FAILURE)
+    {
+        std::cout << ss;
+    };
+
     GLchar * cstr = new GLchar[str.size()+1] ;
     const GLchar * cstr2 = cstr ; // Weirdness to get a const char
     strcpy(cstr,str.c_str()) ;
@@ -406,4 +411,92 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 
 }
 
+glm::vec3 B2E::getWallPos(int wall)
+{
+    glm::vec3 ret=glm::vec3(0.f);
+    auto it=wV.begin()+wall;
+    if (it != wV.end())
+        ret=it->pos;
+    //else
+        //qDebug() << "MAP::getWallPos illegal argument: "<< wall;
+    return ret;
+}
+
+glm::vec3 B2E::getWallNextPos(int wall)
+{
+    glm::vec3 ret=glm::vec3(0.f);
+    auto it=wV.begin()+wall;
+    if (it != wV.end())
+        ret=it->nextPoint->pos;
+    //else
+        //qDebug() << "MAP::getWallNextPos illegal argument: "<< wall;
+    return ret;
+}
+
+
+glm::vec3 B2E::getCenterMap(std::string & rb)
+{
+    glm::vec3 ret=glm::vec3(0.f);
+    if (!isEmpty())
+    {
+        for (auto T: wV)  ret+=T.pos;
+        ret /=wV.size();
+    } else
+    {
+        std::string msg="ERROR: you can't get center of EMPTY map!\n";
+        rb +=msg;
+     }
+    return ret;
+}
+
+GLfloat* B2E::getWhiteOutline(std::vector<GLfloat>& w)
+{
+    w.erase(w.begin(), w.end()); // format c:
+   if (!isEmpty())
+   {
+        for (auto T : wV)
+        {
+            if (T.nextsector < 0)
+            {
+                w.push_back((GLfloat)T.pos.x);
+                w.push_back((GLfloat)T.pos.y);
+                w.push_back((GLfloat)T.nextPoint->pos.x);
+                w.push_back((GLfloat)T.nextPoint->pos.y);
+             }
+        }
+   };
+
+   return NULL;
+}
+
+void B2E::getRedOutline(std::vector<GLfloat>& w)
+{
+    w.erase(w.begin(), w.end()); // format c:
+   if (!isEmpty())
+   {
+        for (auto T : wV)
+        {
+            if (T.nextsector >= 0)
+            {
+                w.push_back((GLfloat)T.pos.x);
+                w.push_back((GLfloat)T.pos.y);
+                w.push_back((GLfloat)T.nextPoint->pos.x);
+                w.push_back((GLfloat)T.nextPoint->pos.y);
+             }
+        }
+   }
+}
+
+void B2E::getPointsOutline(std::vector<GLfloat>& p)
+{
+   p.erase(p.begin(), p.end()); // format c:
+   if (!isEmpty())
+   {
+        for (auto T : spV)
+        {
+            p.push_back(T.pos.x);
+            p.push_back(T.pos.y);
+        }
+   }
+}
 

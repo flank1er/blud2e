@@ -10,9 +10,7 @@
 void show_help_message();
 
 int main(int argc, char *argv[]) {
-    const char* tex_con_file="defs.con";
-    const char* sound_con_file="sounds.con";
-    const char* original_sound="sounds_old.con";
+
     const char* pic_file="pic_table.con";
 
     blud2e map; const float version=0.7; int infoSector;
@@ -101,30 +99,28 @@ int main(int argc, char *argv[]) {
     };
 
 
-    if (!fileExists(tex_con_file) || !fileExists(sound_con_file) || !fileExists(original_sound) || !fileExists(pic_file))
-    {
-		std::cerr << "ERROR: missing files: sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
-        return EXIT_FAILURE;
-	};
-
 /// C O R E ///////////////////////////////
-    if (!((!map.sTable.open(original_sound ,sound_con_file, tex_con_file)) && (!map.openPicsTable(pic_file, map.targa))))
-    {
-        std::cerr << "ERROR: couldn't open files: sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
-        return EXIT_FAILURE;
-    }
 
     if (!map.read(blood_filemap, log))
     {
         if (mode == "export")
-            map.write_obj(infoSector, duke_filemap, log);
-        else if ((mode == "info" || mode == "duke_map_info") && argc == 3 )
+        {
+            if (map.write_obj(infoSector, duke_filemap, log) == EXIT_FAILURE)
+            {
+                std::cout << log.str();
+                return EXIT_FAILURE;
+            }
+        } else if ((mode == "info" || mode == "duke_map_info") && argc == 3 )
             map.show(log);
         else if (mode == "info")
             map.printSector(infoSector, true, log);
         else if ( mode == "convert" )
         {
-            map.processing(log, 0.75f); // C O N V E R S I O N
+            if (map.processing(log, 0.75f) == EXIT_FAILURE) // C O N V E R S I O N
+            {
+                std::cout << log.str();
+                return EXIT_FAILURE;
+            }
             if (map.write(duke_filemap,log) <0)
             {
                 std::cerr << "ERROR: couldn't write file : sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
@@ -132,7 +128,7 @@ int main(int argc, char *argv[]) {
             }
         } else if ( mode == "testing") // write to crypt Blood format. only for testing
         {
-            std::cout << "Try saving map into a Blood format..." <<std::endl;
+            //std::cout << "Try saving map into a Blood format..." <<std::endl;
             if (map.write_v7B(duke_filemap, log) < 0)
             {
                 std::cerr << "ERROR: couldn't write to Blood format" << std::endl;

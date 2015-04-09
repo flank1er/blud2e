@@ -22,6 +22,14 @@ class B2E : public blud2e
 private:
 
 public:
+    glm::vec3 getWallNextPos(int wall);
+    glm::vec3 getWallPos(int wall);
+
+    glm::vec3 getCenterMap(std::string&);
+
+    void getRedOutline(std::vector<GLfloat>&);
+    GLfloat* getWhiteOutline(std::vector<GLfloat>&);
+    void getPointsOutline(std::vector<GLfloat>&);
 
 
 private:
@@ -71,5 +79,8 @@ inline QString gridText(int grid)
 
     return ret;
 };
+
+
+
 
 #endif // GLWIDGET_H

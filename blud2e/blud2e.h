@@ -26,7 +26,6 @@
 
 
 bool fileExists(const char*);
-std::string textFileRead (const char*);
 
 template<class InputIterator, class Function>
 Function for_loop(InputIterator first, Function fn)
@@ -307,6 +306,7 @@ struct xWall {
 struct FLOOR {
     float z;
     int texture_id;
+    glm::ivec2 res;
     glm::vec2 delta; // sec_t::grad[2]  map2stl.c
 };
 
@@ -321,6 +321,7 @@ class  unionWall : public Wall, public xWall {
         glm::vec4 gis;  // gis.z = floorZ ; gis.w=ceilingZ
         glm::ivec3 tag; // lotag+hitag+extra_tag
         glm::ivec2 log;
+        glm::ivec2 res;
         int texture_id;
         int outside_texture_id;
         std::vector<unionWall>::iterator nextPoint;
@@ -416,6 +417,7 @@ class  unionSprite : public Sprite, public xSprite {
         glm::ivec3 tag;
         glm::ivec3 vel;
         glm::ivec2 log;
+        glm::ivec2 res;
         int texture_id;
         std::vector<unionSector>::iterator inSector;
         bool is(std::string title) { if (to_num[title] == texture_id) return true; else return false;};
@@ -429,34 +431,58 @@ class  unionSprite : public Sprite, public xSprite {
         //void makeCstat();
 };
 
-struct soundTable {
+class Resources {
+private:
+    const char* tex_con_file="defs.con";
+    const char* sound_con_file="sounds.con";
+    const char* original_sound="sounds_old.con";
+    const char* pic_file="pic_table.con";
+
 	std::map<int, std::string> source;
 	std::map<int, std::string> texture;
 	std::map<std::string, int> target;
-	int trans(const int sound_id) {
+    std::map<int, glm::ivec2>  pics_table;
+
+    int open_pics_resolution_table(std::stringstream&);
+public:
+    template<class Function> Function get_all_target(Function fn) {
+        for(auto T: target)
+            fn(T.second);
+        return fn;
+    };
+
+    int trans(const int sound_id) {
 		std::string stri=source[sound_id];
-		return target[stri];
-	};
-	int open(std::string, std::string, std::string);
+        return target[stri];
+    };
+
+    glm::ivec2 get_resolution(int value) {return pics_table[value];};
+
+    int load_tables(std::stringstream&);
 };
 
-class blud2e {
+class blud2e  {
 
 protected:
+    std::vector<unionSector> sV;
+    std::vector<unionWall> wV;
+    std::vector<unionSprite> spV;
 
 private:
+
     dukeMap dh;
     short elm;
     hd2 sh;
     hd4 fh;
 	int lengthMap, Revision=-1; //, posX,posY, posZ;
     float scale=1.f;
+    bool isEncrypted=false;
     void showInfo(std::stringstream&);
 
-    std::vector<unionSector> sV;
-    std::vector<unionWall> wV;
-    std::vector<unionSprite> spV;
 
+    Resources RS;
+
+    int DecryptBuffer (unsigned char* Buffer, const size_t DataSize, unsigned char DecryptKey);
     int addSprite(int, int, int,std::string, glm::vec4);
     void Cstat();
     void makeEnemies();
@@ -477,17 +503,14 @@ private:
     int makeSlideDoors(std::stringstream&);
 
 public:
-//std::map<std::string, int> SecNametoNumber;
-	soundTable sTable;
-	std::map<int, glm::ivec2> targa;
 
-	int openPicsTable(std::string filename, std::map<int, glm::ivec2> &table);    
     int read(char *filename, std::stringstream&);
+    int read_text_file_to_string(const char*, std::string&, std::stringstream&);
     int write(char *filename, std::stringstream&);
     int write_v7B(char* filename, std::stringstream&);
     int write_obj(int, char*filename, std::stringstream&);
 
-	int prepare();
+    int prepare(std::stringstream&);
 	int finish();
     int check(std::stringstream&);
     void rm() {wV.erase(wV.begin(), wV.end());spV.erase(spV.begin(), spV.end()); sV.erase(sV.begin(), sV.end());}
@@ -500,15 +523,6 @@ public:
     int getSectors() {return (int)sV.size();};
     int getWalls() {return (int)wV.size();}
     int getSprites() {return (int)spV.size();}
-
-    glm::vec3 getWallNextPos(int wall);
-    glm::vec3 getWallPos(int wall);
-
-    glm::vec3 getCenterMap(std::string&);
-
-    void getRedOutline(std::vector<GLfloat>&);
-    GLfloat* getWhiteOutline(std::vector<GLfloat>&);
-    void getPointsOutline(std::vector<GLfloat>&);
 };
 
 /*

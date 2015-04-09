@@ -208,27 +208,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->widget, SIGNAL(gridSize(QString)), gridLabel, SLOT(setText(QString)));
     connect(this, SIGNAL(KeyPressed(QString)), ui->widget, SLOT(KeyHandler(QString)));
     connect(this, SIGNAL(RebuildMap(QString)), ui->widget, SLOT(chng_map(QString)));
-    //connect(&ui->widget->map, SIGNAL(mChanged(QString)), statLabel, SLOT(setText(QString)));
-    //connect(&ui->widget->map, SIGNAL(mInit(bool)), ui->widget, SLOT(if_changed_map(bool)));
-
-    std::string tex_con_file="defs.con";
-    std::string sound_con_file="sounds.con";
-    std::string original_sound="sounds_old.con";
-    std::string pic_file="pic_table.con";
-
-    if (!fileExists(tex_con_file) || !fileExists(sound_con_file) || !fileExists(original_sound) || !fileExists(pic_file))
-    {
-        QMessageBox::critical(0, "Error", "missing files: sounds.con or sounds_old.con or defs.con or pic_table.con");
-        exit(EXIT_FAILURE);
-    };
 
 
-    if  ((ui->widget->map.sTable.open(original_sound ,sound_con_file, tex_con_file) < 0) ||
-        (ui->widget->map.openPicsTable(pic_file, ui->widget->map.targa) < 0 ))
-    {
-        QMessageBox::critical(0, "Error", "con't open files: sounds.con or sounds_old.con or defs.con or pic_table.con");
-        exit(EXIT_FAILURE);
-    }
 }
 
 MainWindow::~MainWindow()
@@ -406,7 +387,7 @@ void MainWindow::on_action_Open_triggered()
         QString title="B2E Builder - " +lastBit;
         this->setWindowTitle(title);
 
-        ui->widget->map.prepare();
+        ui->widget->map.prepare(refer);
         referMessage=QString::fromStdString(refer.str());
 
         QString statusText=sm(ui->widget->map.getSectors(),ui->widget->map.getWalls(), ui->widget->map.getSprites());

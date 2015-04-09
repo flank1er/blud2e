@@ -18,6 +18,7 @@ SOURCES += main.cpp\
     aboutdlg.cpp \
     ../blud2e/io.cpp \
     ../blud2e/conver.cpp \
+    ../blud2e/info.cpp \
     ../blud2e/obj.cpp
 
 LIBS += -L/usr/lib64 -lGLU -lglut -lz
