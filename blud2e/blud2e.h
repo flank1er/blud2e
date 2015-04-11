@@ -27,6 +27,14 @@
 
 bool fileExists(const char*);
 
+const int size_signature=6;
+const int size_firstHeader=18;
+const int size_secondHeader=9;
+const int size_thirdHeader=10;
+const int size_extra=128;
+const int size_unknownElts=2;
+const int size_blood_header=size_signature+size_firstHeader+size_secondHeader+size_thirdHeader+size_extra;
+
 template<class InputIterator, class Function>
 Function for_loop(InputIterator first, Function fn)
 {
@@ -39,7 +47,7 @@ Function for_loop(InputIterator first, Function fn)
     return fn;
 };
 
-// first six bytes
+// header for Duke maps
 struct dukeMap {
 	int version;
 	int X;
@@ -49,13 +57,30 @@ struct dukeMap {
 	short sector;
 };
 
+struct BloodHeader {
+    unsigned int label=0x1A4D4C42;
+    unsigned short ver=0x0700;
+    int startX;
+    int startY;
+    int startZ;
+    short startAngle;
+    short sectorNum;
+    short unknownElts;
+    char author[size_secondHeader];
+    int mapRevisions;
+    short numSectors;
+    short numWalls;
+    short numSprites;
+    char copyright[size_extra];
+}__attribute__ ((__packed__));
+
 struct hd2
 {
     char data[9];
 };
-struct hd4
+struct OF
 {
-    char data[180];
+    char data[56];
 };
 
 struct Sector {
@@ -145,10 +170,10 @@ struct xSector {
     unsigned locked : 1;
     unsigned pad : 31;
 
-    unsigned upperLink : 11;
-    signed upperLinkZ : 32;
-    unsigned lowerLink : 11;
-    signed lowerLinkZ : 32;
+  //  unsigned upperLink : 11;
+   // signed upperLinkZ : 32;
+  //  unsigned lowerLink : 11;
+//    signed lowerLinkZ : 32;
 };
 
 struct Sprite {
@@ -469,20 +494,19 @@ protected:
     std::vector<unionSprite> spV;
 
 private:
-
+    BloodHeader BH;
     dukeMap dh;
-    short elm;
-    hd2 sh;
-    hd4 fh;
-	int lengthMap, Revision=-1; //, posX,posY, posZ;
+    unsigned int uKelm;
+    //hd2 sh;
+    OF map_offset;
+    int lengthMap, Revision=-1; //, posX,posY, posZ;
     float scale=1.f;
-    bool isEncrypted=false;
+    std::map<int,std::string> map_descriptor={{-7, "Blood"}, {7, "Duke3D"}, {9, "EDuke32"}};
+    int map_specification;
     void showInfo(std::stringstream&);
-
 
     Resources RS;
 
-    int DecryptBuffer (unsigned char* Buffer, const size_t DataSize, unsigned char DecryptKey);
     int addSprite(int, int, int,std::string, glm::vec4);
     void Cstat();
     void makeEnemies();
@@ -503,7 +527,6 @@ private:
     int makeSlideDoors(std::stringstream&);
 
 public:
-
     int read(char *filename, std::stringstream&);
     int read_text_file_to_string(const char*, std::string&, std::stringstream&);
     int write(char *filename, std::stringstream&);

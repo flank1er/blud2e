@@ -11,10 +11,12 @@ void show_help_message();
 
 int main(int argc, char *argv[]) {
 
-    const char* pic_file="pic_table.con";
-
-    blud2e map; const float version=0.7; int infoSector;
-    std::string mode="blank"; char * blood_filemap;  char * duke_filemap;
+    blud2e map;
+    const float version=0.7;
+    int infoSector;
+    std::string mode="blank";
+    char * input_filename;
+    char * output_filename;
     std::stringstream log;
 
     log << "\nDecryptor MAP files from Blood video game, Monolith Production, 1997(c)\n" << \
@@ -38,7 +40,7 @@ int main(int argc, char *argv[]) {
             std::cout << "ERROR: file: " << argv[2] << " doesn't exist!" << std::endl;
             return EXIT_FAILURE;
         };
-        blood_filemap = argv[2];
+        input_filename = argv[2];
         if ( std::string(argv[1]) == "-i" || std::string(argv[1]) == "--info" )
                 mode="info";
         else if ( std::string(argv[1]) == "-e" || std::string(argv[1]) == "--export" )
@@ -55,7 +57,7 @@ int main(int argc, char *argv[]) {
                 std::cout << "ERROR: file: " << argv[2] << " doesn't exist!" << std::endl;
                 return EXIT_FAILURE;
             };
-            blood_filemap = argv[2]; duke_filemap  = argv[3];mode="convert";
+            input_filename = argv[2]; output_filename  = argv[3];mode="convert";
 
         };
         if ( std::string(argv[1]) == "-i" || std::string(argv[1]) == "--info" ) {
@@ -64,7 +66,7 @@ int main(int argc, char *argv[]) {
                 std::cout << "ERROR: file: " << argv[3] << " doesn't exist!" << std::endl;
                 return EXIT_FAILURE;
             }
-            infoSector=atoi(argv[2]); blood_filemap = argv[3]; mode="info";
+            infoSector=atoi(argv[2]); input_filename = argv[3]; mode="info";
 		};
 
         if ( std::string(argv[1]) == "-e" || std::string(argv[1]) == "--export" ) {
@@ -73,7 +75,7 @@ int main(int argc, char *argv[]) {
                 std::cout << "ERROR: file: " << argv[2] << " doesn't exist!" << std::endl;
                 return EXIT_FAILURE;
             };
-            infoSector=-1; blood_filemap = argv[2];	duke_filemap=argv[3]; mode="export";
+            infoSector=-1; input_filename = argv[2];	output_filename=argv[3]; mode="export";
         };
 
         if ( std::string(argv[1]) == "-t" || std::string(argv[1]) == "--test" )
@@ -83,7 +85,7 @@ int main(int argc, char *argv[]) {
                         std::cout << "ERROR: file: " << argv[2] << " doesn't exist!" << std::endl;
                         return EXIT_FAILURE;
                     };
-                    blood_filemap = argv[2]; duke_filemap  = argv[3];mode="testing";
+                    input_filename = argv[2]; output_filename  = argv[3];mode="testing";
                 };
     };
 
@@ -94,18 +96,18 @@ int main(int argc, char *argv[]) {
                 std::cout << "ERROR: file: " << argv[3] << " doesn't exist!" << std::endl;
                 return EXIT_FAILURE;
             };
-            infoSector=atoi(argv[2]); blood_filemap = argv[3]; duke_filemap=argv[4];
+            infoSector=atoi(argv[2]); input_filename = argv[3]; output_filename=argv[4];
 			mode="export";
     };
 
 
 /// C O R E ///////////////////////////////
 
-    if (!map.read(blood_filemap, log))
+    if (!map.read(input_filename, log))
     {
         if (mode == "export")
         {
-            if (map.write_obj(infoSector, duke_filemap, log) == EXIT_FAILURE)
+            if (map.write_obj(infoSector, output_filename, log) == EXIT_FAILURE)
             {
                 std::cout << log.str();
                 return EXIT_FAILURE;
@@ -121,7 +123,7 @@ int main(int argc, char *argv[]) {
                 std::cout << log.str();
                 return EXIT_FAILURE;
             }
-            if (map.write(duke_filemap,log) <0)
+            if (map.write(output_filename,log) <0)
             {
                 std::cerr << "ERROR: couldn't write file : sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
                 return EXIT_FAILURE;
@@ -129,7 +131,7 @@ int main(int argc, char *argv[]) {
         } else if ( mode == "testing") // write to crypt Blood format. only for testing
         {
             //std::cout << "Try saving map into a Blood format..." <<std::endl;
-            if (map.write_v7B(duke_filemap, log) < 0)
+            if (map.write_v7B(output_filename, log) < 0)
             {
                 std::cerr << "ERROR: couldn't write to Blood format" << std::endl;
                 std::cerr << log.str() << std::endl;

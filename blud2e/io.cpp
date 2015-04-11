@@ -21,13 +21,6 @@
 #include <sys/stat.h> // check that file exists
 #include <zlib.h>
 
-const int size_signature=6;
-const int size_firstHeader=18;
-const int size_secondHeader=9;
-const int size_thirdHeader=10;
-const int size_extra=128;
-const int size_unknownElts=2;
-
 const int size_sector=40;
 const int size_wall=32;
 const int size_sprite=44;
@@ -36,35 +29,11 @@ const int size_extra_sector=60;
 const int size_extra_sprite=56;
 const int size_extra_wall=24;
 
-struct firstHeader {
-	int startX;
-	int startY;
-	int startZ;
-    unsigned short startAngle;
-	short sectorNum;
-	short unknownElts;
-};
-
-struct thirdHeader {
-	int mapRevisions;
-	short numSectors;
-	short numWalls;
-	short numSprites;
-};
-
-struct signature {
-    unsigned int label=0x1A4D4C42;
-    unsigned short ver=0x0700;
-};
+bool isEncrypted=true;
+const int BUFFER_SIZE=192;
 
 int get_lines_in_text_file(std::string filename);
 int read_string(std::vector<std::string> &words, std::ifstream& in);
-
-bool fileExists(const char* filename)
-{
-    struct stat buf;
-    if (stat(filename, &buf) != -1)  { return true;} return false;
-};
 
 template<class myFunction>
 myFunction my_func(const char* filename, std::stringstream& msg,  myFunction fn)
@@ -108,15 +77,69 @@ template<typename T, typename T1> void writeVector(T &the_vector, T1 &chuck, std
     };
 };
 
-
-int blud2e::DecryptBuffer (unsigned char* Buffer, const size_t DataSize, unsigned char DecryptKey)
+int DecryptBuffer (unsigned char* Buffer, const size_t DataSize, unsigned char DecryptKey, int offset=0)
 {
-    if (!isEncrypted || Buffer == NULL)
+    if (!isEncrypted || Buffer == NULL || (offset+DataSize) > BUFFER_SIZE)
         return EXIT_FAILURE;
 
-	for (unsigned short i = 0; i < DataSize; i++)
-        	Buffer[i] ^= (unsigned char)(DecryptKey + i);
+    for (unsigned short i = offset; i < DataSize+offset; i++)
+            Buffer[i] ^= (unsigned char)(DecryptKey + i - offset);
     return EXIT_SUCCESS;
+};
+
+template<typename T, typename T1, typename T2>
+void readVector(std::vector<T> &the_vector, T1 &basic, T2 &extra,std::ifstream &file,int count, unsigned char key, bool format)
+{
+    char Buffer[BUFFER_SIZE];
+    char * ptr= (char*)Buffer;
+    for ( int i=0; i< count; i++)
+    {
+        T a;
+        T1& b=dynamic_cast<T1&>(a);
+        file.read(ptr,sizeof(b));
+        DecryptBuffer ((unsigned char*)ptr, sizeof(b), key);
+        b=*(T1*)Buffer;
+        if (format && b.extra >0)
+        {
+            file.read(ptr, sizeof(extra));
+            a.over=true;
+            T2& c=dynamic_cast<T2&>(a);
+            c=*(T2*)Buffer;
+        }
+        the_vector.push_back(a);
+    };
+}
+template<typename T, typename T1, typename T2>
+void writeVector7B(T &the_vector, T1 &basic, T2 &extra,std::ofstream &file,uLong& crc, unsigned char key)
+{
+    for(auto it:the_vector)
+    {
+        T1 chunk=dynamic_cast<T1&>(it);
+        DecryptBuffer ((unsigned char*)&chunk, sizeof(chunk), key);
+        file.write((char*)&chunk, sizeof(chunk));
+        crc=crc32(crc, (const Bytef*)&chunk, sizeof(chunk));
+        if (it.extra >0)
+        {
+            T2 chunkX=dynamic_cast<T2&>(it);
+            file.write((char*)&chunkX, sizeof(chunkX));
+            crc=crc32(crc, (const Bytef*)&chunkX, sizeof(chunkX));
+        }
+    }
+}
+
+int check_types_size()
+{
+    return (sizeof(Sector) != size_sector || sizeof(xSector) != size_extra_sector \
+            || sizeof(Wall) != size_wall || sizeof(xWall) != size_extra_wall || \
+            sizeof(Sprite) != size_sprite || sizeof(xSprite) != size_extra_sprite ||
+            sizeof(BloodHeader) != size_blood_header) \
+            ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
+bool fileExists(const char* filename)
+{
+    struct stat buf;
+    return (stat(filename, &buf) != -1) ? true : false;
 };
 
 void getw(std::string& t, std::ifstream& in) {
@@ -175,22 +198,18 @@ int blud2e::read_text_file_to_string(const char* filename, std::string& ret, std
 
 
 ///////----- M A P    C L A S S ////////////////////////////
-
 ////////////////////// W R I T E ////////////////////////////////////
 int  blud2e::write(char *filename, std::stringstream& referback) {
+    if (check_types_size() == EXIT_FAILURE)
+    {
+        referback << "ERROR: incorrect of size types!" << std::endl;
+        return EXIT_FAILURE;
+    }
 
     std::ofstream out(filename, std::ofstream::binary);
     if (out.is_open())
     {
-        if (sizeof(Sector) != size_sector || sizeof(Sprite)  != size_sprite || sizeof(Wall) != size_wall || sizeof(dh) != 20)
-        {
-            referback << "ERROR: Incorrect size of types" << std::endl;
-            out.close();
-            return EXIT_FAILURE;
-        }
-
         out.write((char*)(&dh), sizeof(dh));
-
         Sector newSec; writeVector(sV, newSec, out);
         Wall newWall; writeVector(wV, newWall, out);
         Sprite newSpr; writeVector(spV, newSpr, out);
@@ -204,8 +223,14 @@ int  blud2e::write(char *filename, std::stringstream& referback) {
 };
 
 ////////////////// R E A D /////////////////////////////////////////////
+// decrypt algorithm from blud2b.c, HTTP://blood.sourceforge.net
 int blud2e::read(char *filename, std::stringstream& msg)
 {
+    if (check_types_size() == EXIT_FAILURE)
+    {
+        msg << "ERROR: incorrect of size types!" << std::endl;
+        return EXIT_FAILURE;
+    }
     std::ifstream in (filename, std::ifstream::binary);
 	if (in.is_open())
 	{
@@ -221,62 +246,47 @@ int blud2e::read(char *filename, std::stringstream& msg)
             return EXIT_FAILURE;
         }
 
-        // get work buffer
-        char Buffer[180];
-		char * ptr= (char*)Buffer;
-		unsigned char sign[6];
+        char Buffer[BUFFER_SIZE];
+        char * ptr= (char*)Buffer;
 
-		in.read((char*)&sign, sizeof(sign));
+        in.read(ptr,size_blood_header);
+        DecryptBuffer ((unsigned char*)ptr, size_firstHeader, 0x4D, size_signature);
+        DecryptBuffer ((unsigned char*)ptr, size_thirdHeader, 0x68,size_signature+size_firstHeader+size_secondHeader);
+        BH=*(BloodHeader*)ptr;
 
-		// if Blood map format
-		if ( (sign[0] ^ sign[1] ^ sign[2] ^ sign[3]) == 0x59 )
+        if(BH.label == 0x1A4D4C42)
             {
-                msg << "Blood MAP format detection..." << std::endl;
-                if (sign[4] == 3 && sign[5] == 6 )
-                    dh.version=63;
-                else if (sign[4] == 0 && sign[5] == 7)
+                if (BH.ver == 0x0700)
                 {
                     dh.version=7;
+                    map_specification=dh.version*(-1);
                     isEncrypted=true;
-                } else
-                {
-                    msg << "\nDecryptor can only handle map versions 6.3 and 7.0.\n";
+                } else {
+                    msg << "\nDecryptor can only handle map versions 7.0.\n";
                     msg << "Try bringing the map up in the latest version of mapedit, then save it.\n";
                     msg << "This should produce a 7.0 version map, which Decryptor CAN convert to build.\n";
                     in.close();
                     return EXIT_FAILURE;
-                };
+                }
 
-                // read magic+version
-                in.read(ptr,size_firstHeader);
+                dh.X=BH.startX;
+                dh.Y=BH.startY;
+                dh.Z=BH.startZ;
+                dh.angle=BH.startAngle;
+                dh.sector=BH.sectorNum;
+                uKelm = (1 << BH.unknownElts);
+                amountSectors=BH.numSectors;
+                amountWalls=BH.numWalls;
+                amountSprites=BH.numSprites;
+                Revision=BH.mapRevisions;
 
-                DecryptBuffer ((unsigned char*)ptr, size_firstHeader, 0x4D);
-                firstHeader &hd1=*(firstHeader*)Buffer;
+                msg << "Blood MAP format detection: "<< map_descriptor[map_specification] << std::endl;
+                msg << "count unknownElts: " << uKelm << std::endl;
 
-                dh.X=hd1.startX;  dh.Y=hd1.startY;  dh.Z=hd1.startZ;
-                dh.angle=hd1.startAngle;  dh.sector=hd1.sectorNum;
-                unsigned int NbUnknownElements = (1 << hd1.unknownElts);
-                elm=hd1.unknownElts;
-
-                msg << "count unknownElts: " << NbUnknownElements << std::endl;
-
-                // seek second header
-                in.seekg(size_secondHeader, in.cur);
-
-                // read third header
-                in.read(ptr,size_thirdHeader);
-                DecryptBuffer ((unsigned char*)ptr, size_thirdHeader, 0x68);
-                thirdHeader &h3=*(thirdHeader*)Buffer;
-                amountSectors=h3.numSectors;
-                amountWalls=h3.numWalls;
-                amountSprites=h3.numSprites;
-                Revision=h3.mapRevisions;
-
-                // seek to position to begin of first sector
-                long offset = (isEncrypted) ? size_extra : 0;
-                offset += (NbUnknownElements * size_unknownElts);
-                // go to begin the first sector
-                in.seekg(offset, in.cur);
+                int offset = (uKelm * size_unknownElts);
+                in.read(ptr, offset);
+                map_offset=*(OF*)ptr;
+                //in.seekg(offset, in.cur);
            } else
            {
                 in.seekg(0, in.beg);
@@ -287,73 +297,43 @@ int blud2e::read(char *filename, std::stringstream& msg)
                      in.close();
                      return EXIT_FAILURE;
                 };
-                msg << "Duke MAP format detection..." <<std::endl;
+                map_specification=dh.version;
+                BH.mapRevisions=0;
+                BH.startX=dh.X;
+                BH.startY=dh.Y;
+                BH.startZ=dh.Z;
+                BH.startAngle=dh.angle;
+                BH.sectorNum=dh.sector;
+                BH.unknownElts=4;
+                isEncrypted=false;
+
+                msg << "Duke MAP format detection: " << map_descriptor[map_specification] << std::endl;
                 in.read((char*)&amountSectors, sizeof(amountSectors));
+                BH.numSectors=amountSectors;
                 blood_format=false;
            };
 
             unsigned char  decryptKey = ((Revision * size_sector) & 0xFF);
-            // read sector's array
-            for ( int i=0; i< amountSectors; i++)
-            {
-                unionSector S;
-                Sector& z=dynamic_cast<Sector&>(S);
-                in.read(ptr,size_sector);
-                DecryptBuffer ((unsigned char*)ptr, size_sector, decryptKey);
-                z=*(unionSector*)Buffer;
-                if (blood_format && S.extra > 0)
-                {
-                    in.read(ptr, size_extra_sector);
-                    S.over=true;
-                    xSector& xz=dynamic_cast<xSector&>(S);
-                    xz=*(xSector*)Buffer;
-                };
-                sV.push_back(S);
-            };
+            Sector A; xSector B; readVector(sV,A,B,in,amountSectors,decryptKey, blood_format);
 
-            // WALLS---------------------------------
             if (!blood_format)
+            {
                 in.read((char*)&amountWalls,2);
+                BH.numWalls=amountWalls;
+            };
 
             decryptKey = (((Revision * size_sector) | 0x4d) & 0xFF);
-            for ( int i=0; i< amountWalls; i++)
-            {
-                unionWall W;
-                Wall& z=dynamic_cast<Wall&>(W);
-                in.read(ptr,size_wall);
-                DecryptBuffer ((unsigned char*)ptr, size_wall, decryptKey);
-                z=*(unionWall*)Buffer;
-                if (blood_format && W.extra > 0)
-                {
-                    in.read(ptr, size_extra_wall);
-                    W.over=true;
-                    xWall& xz=dynamic_cast<xWall&>(W);
-                    xz=*(xWall*)Buffer;
-                };
-                wV.push_back(W);
-            };
+            Wall C; xWall D; readVector(wV,C,D,in,amountWalls,decryptKey, blood_format);
 
-            // SPRITES
             if (!blood_format)
+            {
                 in.read((char*)&amountSprites,2);
+                BH.numSprites=amountSprites;
+            };
 
             decryptKey = (((Revision * size_sprite) | 0x4d) & 0xFF);
-            for ( int i=0; i< amountSprites; i++)
-            {
-                unionSprite SP;
-                Sprite& z=dynamic_cast<Sprite&>(SP);
-                in.read(ptr,size_sprite);
-                DecryptBuffer ((unsigned char*)ptr, size_sprite, decryptKey);
-                z=*(unionSprite*)Buffer;
-                if (blood_format && SP.extra > 0)
-                {
-                    in.read(ptr, size_extra_sprite);
-                    SP.over=true;
-                    xSprite& xz=dynamic_cast<xSprite&>(SP);
-                    xz=*(xSprite*)Buffer;
-                };
-                spV.push_back(SP);
-            };
+            Sprite E; xSprite F; readVector(spV,E,F,in,amountSprites,decryptKey, blood_format);
+
             showInfo(msg); //???? re
         } else{
             msg << "ERROR: can't open file: " << filename << std::endl;
@@ -366,122 +346,57 @@ int blud2e::read(char *filename, std::stringstream& msg)
 
 int blud2e::write_v7B(char* filename, std::stringstream& msg)
 {
-    //sTable.load_tables();
+    if (check_types_size() == EXIT_FAILURE)
+    {
+        msg << "ERROR: incorrect of size types!" << std::endl;
+        return EXIT_FAILURE;
+    }
+    if ( map_specification > 0)
+    {
+        msg << "ERROR: impossible write to Blood format file from: " << map_descriptor[map_specification]<< std::endl;
+        return EXIT_FAILURE;
+    }
 
+    isEncrypted=true;
     std::ofstream out (filename, std::ofstream::binary);
 
     if (out.is_open())
-    {        
+    {
         Revision++;
-        unsigned char* buffer = new unsigned char[180];
+        BH.numSectors=(short)getSectors();
+        BH.numWalls=(short)getWalls();
+        BH.numSprites=(short)getSprites();
+        BH.mapRevisions=Revision;
+        msg << "map revision: " << Revision << std::endl;
+        unsigned char* buffer = new unsigned char[BUFFER_SIZE];
         uLong crc = crc32(0L, Z_NULL, 0);
+        buffer=(unsigned char*)&BH;
+        DecryptBuffer ((unsigned char*)buffer, size_firstHeader, 0x4D, size_signature);
+        DecryptBuffer ((unsigned char*)buffer, size_thirdHeader, 0x68,size_signature+size_firstHeader+size_secondHeader);
+        crc=crc32(crc, buffer, size_blood_header);
+        out.write((char*)buffer,size_blood_header);
 
-        //////////SIGNATURE////////////////////
-        signature sg;
-        buffer=(unsigned char*)&sg;
-        out.write((char*)buffer, size_signature);
-        crc=crc32(crc, buffer, size_signature);
-        /////////MAGIC NUMBER ///////////////////////
-        firstHeader head_first;
-        head_first.startX=dh.X;
-        head_first.startY=dh.Y;
-        head_first.startZ=dh.Z;
-        head_first.startAngle=dh.angle;
-        head_first.startAngle=dh.sector;
-        head_first.unknownElts=elm;
-        buffer=(unsigned char*)&head_first;
-        DecryptBuffer ((unsigned char*)buffer, size_firstHeader, 0x4D);
-        out.write((char*)buffer,size_firstHeader);
-        crc=crc32(crc, buffer, size_firstHeader);
-
-        buffer=(unsigned char*)&sh;
-        out.write((char*)buffer,size_secondHeader);
-        crc=crc32(crc, buffer, size_secondHeader);
-
-        ///// AMOUNT OF SECTORS / WALLS / SPRITES / REVISION NUMBER /////third header //////////
-        thirdHeader hd3;
-        hd3.numSectors=sV.size();
-        hd3.numWalls=wV.size();
-        hd3.numSprites=spV.size();
-        hd3.mapRevisions=Revision;
-        buffer=(unsigned char*)&hd3;
-        DecryptBuffer ((unsigned char*)buffer, size_thirdHeader, 0x68);
-        out.write((char*)buffer,size_thirdHeader);
-        crc=crc32(crc, buffer, size_thirdHeader);
-
-        int offset=size_extra+(2<<elm);
-        buffer=(unsigned char*)&fh;
-        out.write((char*)buffer, offset);
+        int offset = (uKelm * size_unknownElts);
+        buffer=(unsigned char*)&map_offset;
         crc=crc32(crc, buffer, offset);
-        //std::cout << "offset: " << offset <<std::endl;
+        out.write((char*)buffer,offset);
 
-        /// SECTORS ///////////////
         unsigned char  decryptKey = ((Revision * size_sector) & 0xFF);
-        for (auto T: sV)
-        {
-            Sector chunk;
-            chunk=dynamic_cast<Sector&>(T);
-            buffer=(unsigned char*)&chunk;
-            DecryptBuffer ((unsigned char*)buffer, size_sector, decryptKey);
-            out.write((char*)buffer, size_sector);
-            crc=crc32(crc, buffer, size_sector);
-            if (T.extra > 0)
-            {
-                xSector chunkX;
-                chunkX=dynamic_cast<xSector&>(T);
-                buffer=(unsigned char*)&chunkX;
-                out.write((char*)buffer, size_extra_sector);
-                crc=crc32(crc, buffer, size_extra_sector);
-            }
-        };
+        Sector A; xSector B; writeVector7B(sV,A,B,out,crc,decryptKey);
 
-        //// WALLS /////////////////
         decryptKey = (((Revision * size_sector) | 0x4d) & 0xFF);
-        for (auto T: wV)
-        {
-            Wall chunk;
-            chunk=dynamic_cast<Wall&>(T);
-            buffer=(unsigned char*)&chunk;
-            DecryptBuffer ((unsigned char*)buffer, size_wall, decryptKey);
-            out.write((char*)buffer, size_wall);
-            crc=crc32(crc, buffer, size_wall);
-            if (T.extra > 0)
-            {
-                xWall chunkX;
-                chunkX=dynamic_cast<xWall&>(T);
-                buffer=(unsigned char*)&chunkX;
-                out.write((char*)buffer, size_extra_wall);
-                crc=crc32(crc, buffer, size_extra_wall);
-            }
-        };
+        Wall C; xWall D; writeVector7B(wV,C,D,out,crc,decryptKey);
 
-        //// SPRITES /////////////////////////
         decryptKey = (((Revision * size_sprite) | 0x4d) & 0xFF);
-        for (auto T: spV)
-        {
-            Sprite chunk;
-            chunk=dynamic_cast<Sprite&>(T);
-            buffer=(unsigned char*)&chunk;
-            DecryptBuffer ((unsigned char*)buffer, size_sprite, decryptKey);
-            out.write((char*)buffer, size_sprite);
-            crc=crc32(crc, buffer, size_sprite);
-            if (T.extra > 0)
-            {
-                xSprite chunkX;
-                chunkX=dynamic_cast<xSprite&>(T);
-                buffer=(unsigned char*)&chunkX;
-                out.write((char*)buffer, size_extra_sprite);
-                crc=crc32(crc, buffer, size_extra_sprite);
-            }
-        };
+        Sprite E; xSprite F; writeVector7B(spV,E,F,out,crc,decryptKey);
 
         out.write((char*)&crc,4);
+        out.close();
     } else
     {
         msg <<  "ERROR: can't  write to file: " << filename << std::endl;
         return EXIT_FAILURE;
     }
-    out.close();
     return EXIT_SUCCESS;
 }
 
@@ -545,7 +460,7 @@ int Resources::open_pics_resolution_table(std::stringstream& msg)
         };
         w.erase(w.begin(), w.end());
     } else {
-        //std::cerr << "ERROR: can't open file: " << filename << std::endl;
+        msg << "ERROR: can't open file: " << pic_file << std::endl;
         return EXIT_FAILURE;
     }
 

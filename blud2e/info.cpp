@@ -165,10 +165,10 @@ void unionSector::print(std::stringstream& msg)
     SHOW(locked);
     SHOW(pad);
 
-    SHOW(upperLink);
-    SHOW( upperLinkZ);
-    SHOW(lowerLink);
-    SHOW( lowerLinkZ);
+    //SHOW(upperLink);
+    //SHOW( upperLinkZ);
+    //SHOW(lowerLink);
+    //SHOW( lowerLinkZ);
     std::cout.rdbuf(coutbuf);
     msg <<ss.str();
 };
@@ -329,14 +329,15 @@ void blud2e::showInfo(std::stringstream& ret) {
     ret << "startZ: " << dh.Z  << "\n";
     ret << "startAngle: " << dh.angle  << std::endl
          << "sectorNum: " << dh.sector  << std::endl;
-        if (isEncrypted)
+/*        if (isEncrypted)
         {
             ret << std::endl << "Encrypted: yes" << std::endl;
             ret << "Map revision: " << Revision  << std::endl;
         } else
             ret << std::endl << "Encrypted: no" << std::endl;
-
+*/
     ret << "map version: " << dh.version << std::endl;
+    ret << "map revison: " << BH.mapRevisions << std::endl;
     ret << "amount Sectors: " << sV.size()  << std::endl;
     ret << "amount Walls: " << wV.size()  << std::endl;
     ret << "amount Sprites: " << spV.size()  << std::endl;
