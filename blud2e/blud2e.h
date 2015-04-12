@@ -467,8 +467,6 @@ private:
 	std::map<int, std::string> texture;
 	std::map<std::string, int> target;
     std::map<int, glm::ivec2>  pics_table;
-
-    int open_pics_resolution_table(std::stringstream&);
 public:
     template<class Function> Function get_all_target(Function fn) {
         for(auto T: target)
@@ -501,7 +499,7 @@ private:
     OF map_offset;
     int lengthMap, Revision=-1; //, posX,posY, posZ;
     float scale=1.f;
-    std::map<int,std::string> map_descriptor={{-7, "Blood"}, {7, "Duke3D"}, {9, "EDuke32"}};
+    std::map<int,std::string> map_descriptor={{-7, "Blood"}, {7, "Duke3D"}, {9, "EDuke32"}}; // ENUM ??
     int map_specification;
     void showInfo(std::stringstream&);
 

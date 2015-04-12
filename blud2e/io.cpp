@@ -20,6 +20,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <sys/stat.h> // check that file exists
 #include <zlib.h>
+#include <zip.h>
 
 const int size_sector=40;
 const int size_wall=32;
@@ -32,38 +33,57 @@ const int size_extra_wall=24;
 bool isEncrypted=true;
 const int BUFFER_SIZE=192;
 
-int get_lines_in_text_file(std::string filename);
-int read_string(std::vector<std::string> &words, std::ifstream& in);
+int zip_to_stream(const char* filename, std::stringstream &ss, std::stringstream& msg);
 
 template<class myFunction>
 myFunction my_func(const char* filename, std::stringstream& msg,  myFunction fn)
 {
-     int lines=get_lines_in_text_file(filename);
-     if (lines > 0)
-     {
-         lines+=10;
-         std::ifstream in(filename);
-         std::vector<std::string> w(lines);
-         int num=read_string(w,in);
-         w.resize(num);
-         in.close();
-         auto it=w.begin();
-         while(it != w.end())
-         {
-             if ( *it == "define" )
-             {
-                 ++it;
-                 std::string str=*it;
-                 std::string str1=*(++it);
-                 int d=atoi(str1.c_str());
-                 fn(d, str);
-             };
-             ++it;
-         };
-     } else {
-         msg <<"ERROR: couldn't open file: " << filename << std::endl;
-     }
-     return fn;
+    std::stringstream zf;
+    if (zip_to_stream(filename, zf, msg) != EXIT_FAILURE)
+    {
+        int length=zf.str().length();
+        int lines=0; bool space=false;
+        //msg << "length filename: " << filename << " size: "<< length<<  std::endl;
+        for(auto T:zf.str())
+        {
+            if ( T == '\n' || T == ' ' || T == '\t' )
+                space=true;
+            else if (space)
+            {
+                space=false;
+                lines++;
+            };
+        }
+        //msg << "length filename: " << filename << " words: "<< lines <<  std::endl;
+        lines+=10; int i=0;
+        std::vector<std::string> w(lines);
+        std::istringstream iss(zf.str());
+        std::string buf;
+        while (iss >> buf)
+            w[i++]=buf;
+        w.resize(i-1);
+        auto it=w.begin();
+        while(it != w.end())
+        {
+            if ( *it == "define" )
+            {
+                std::string str=*(++it);
+                std::string str1=*(++it);
+                std::string str2;
+                int d=atoi(str1.c_str());
+                if ((it+1) !=w.end())
+                    str2=*(it+1);
+                else
+                    str2=str1;
+
+                fn(d, str, str2);
+            };
+            ++it;
+        };
+    } else {
+        msg <<"ERROR: couldn't open file: " << filename << std::endl;
+    }
+    return fn;
 };
 
 template<typename T, typename T1> void writeVector(T &the_vector, T1 &chuck, std::ofstream &file)
@@ -109,6 +129,7 @@ void readVector(std::vector<T> &the_vector, T1 &basic, T2 &extra,std::ifstream &
         the_vector.push_back(a);
     };
 }
+
 template<typename T, typename T1, typename T2>
 void writeVector7B(T &the_vector, T1 &basic, T2 &extra,std::ofstream &file,uLong& crc, unsigned char key)
 {
@@ -142,39 +163,45 @@ bool fileExists(const char* filename)
     return (stat(filename, &buf) != -1) ? true : false;
 };
 
-void getw(std::string& t, std::ifstream& in) {
-    in>>t;
-};
-
-int read_string(std::vector<std::string> &words, std::ifstream& in) {
-    int i=0;
-    while (!in.eof())
-        getw(words[i++],in);
-    return (i-1);
-};
-
-int get_lines_in_text_file(std::string filename)
+int zip_to_stream(const char* filename, std::stringstream &ss, std::stringstream& msg)
 {
-    std::ifstream f(filename, std::ifstream::binary);
-    if (f.is_open())
+    const char* name_zippped_file="blud2e.zip";
+    struct zip_file* zipped_file;
+    struct zip* z;
+    int error;
+
+    z = zip_open(name_zippped_file, 0, &error);
+    if (z == NULL)
     {
-        f.seekg(0,f.end); int l=f.tellg(); f.seekg(0,f.beg);
-        int lines=0; char* buf = new char;  bool if_space=false;
+        msg << "Error: can't open file: " << name_zippped_file << "\nerror code: " << error << std::endl;
+        return EXIT_FAILURE;
+    };
 
-        for (int i=0;i<l-1; i++) {
-            f.read(buf,1);
-            if ( *buf == '\n' || *buf == ' ' || *buf == '\t' ) if_space=true;
-            else if (if_space) {
-                if_space=false;
-                lines++;
-            };
-        };
-
-        delete buf;
-        f.close();
-        return lines+10; // overflow protect
+    int idx=zip_name_locate(z,filename,0);
+    if (idx < 0)
+    {
+        msg << "ERROR: file: " << filename << " not found" << std::endl;
+        return EXIT_FAILURE;
     } else
-        return -1;
+    {
+        zipped_file=zip_fopen_index(z,idx, 0);
+        if (zipped_file != NULL)
+        {
+            int r;  char* bf;
+            while ((r =zip_fread(zipped_file, bf, sizeof(bf))) > 0 )
+            {
+                ss << bf;
+            }
+            zip_fclose(zipped_file);
+        } else
+        {
+            msg << "ERROR: can't open file' " << filename << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+
+    zip_close(z);
+    return EXIT_SUCCESS;
 }
 
 int blud2e::read_text_file_to_string(const char* filename, std::string& ret, std::stringstream& msg)
@@ -195,8 +222,6 @@ int blud2e::read_text_file_to_string(const char* filename, std::string& ret, std
     }
     return EXIT_SUCCESS;
 }
-
-
 ///////----- M A P    C L A S S ////////////////////////////
 ////////////////////// W R I T E ////////////////////////////////////
 int  blud2e::write(char *filename, std::stringstream& referback) {
@@ -406,64 +431,33 @@ int Resources::load_tables(std::stringstream& referback)
     target.erase(target.begin(), target.end());
     texture.erase(texture.begin(), texture.end());
 
-    if (!fileExists(tex_con_file) || !fileExists(sound_con_file) || !fileExists(original_sound) || !fileExists(pic_file))
+    if (!fileExists("blud2e.zip"))
     {
-        referback << "ERROR: missing files: sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
+        referback << "ERROR: missing files: blud2e.zip" << std::endl;
         return EXIT_FAILURE;
     };
 
-    my_func(original_sound, referback, [&] (int _n, std::string _s) {
+    my_func(original_sound, referback, [&] (int _n, std::string _s, std::string _a) {
         source[_n]=_s;
     });
 
-    my_func(sound_con_file, referback,  [&] (int _n, std::string _s) {
+    my_func(sound_con_file, referback,  [&] (int _n, std::string _s, std::string _a) {
         target[_s]=_n;
     });
 
-    my_func(pic_file, referback, [&] (int _n, std::string _s) {
+    my_func(tex_con_file, referback, [&] (int _n, std::string _s, std::string _a) {
         texture[_n]=_s;
     });
 
-    open_pics_resolution_table(referback);
+    my_func(pic_file, referback, [&] (int _n, std::string _s, std::string _a) {
+        int d0=atoi(_s.c_str());
+        int d2=atoi(_a.c_str());
+        pics_table[d0]=glm::ivec2(_n,d2);
+    });
+    referback << "source size: " << source.size() << std::endl;
+    referback << "target size: " << target.size() << std::endl;
+    referback << "texure size: " << texture.size() << std::endl;
+    referback << "resolution table size: " << pics_table.size() << std::endl;
 
     return EXIT_SUCCESS;
 };
-
-int Resources::open_pics_resolution_table(std::stringstream& msg)
-{
-
-    pics_table.erase(pics_table.begin(), pics_table.end());
-
-    int lines=get_lines_in_text_file(pic_file);
-    if (lines > 0)
-    {
-        std::ifstream in(pic_file);
-        std::vector<std::string> w(lines);
-        int num=read_string(w,in);
-        w.resize(num);
-        in.close();
-
-        auto it=w.begin();
-        while(it != w.end())
-        {
-            int d0, d1, d2;
-            std::string str;
-            if ( *it == "define" && (it+3)<w.end())
-            {
-                str=*(++it); d0=atoi(str.c_str());
-                str=*(++it); d1=atoi(str.c_str());
-                str=*(++it); d2=atoi(str.c_str());
-                glm::ivec2 v=glm::ivec2(d1,d2);
-                pics_table[d0]=v;
-            };
-            ++it;
-        };
-        w.erase(w.begin(), w.end());
-    } else {
-        msg << "ERROR: can't open file: " << pic_file << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
-};
-

@@ -21,7 +21,7 @@ SOURCES += main.cpp\
     ../blud2e/info.cpp \
     ../blud2e/obj.cpp
 
-LIBS += -L/usr/lib64 -lGLU -lglut -lz
+LIBS += -L/usr/lib64 -lGLU -lglut -lz -lzip
 
 CONFIG += debug
 
