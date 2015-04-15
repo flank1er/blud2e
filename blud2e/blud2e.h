@@ -74,10 +74,7 @@ struct BloodHeader {
     char copyright[size_extra];
 }__attribute__ ((__packed__));
 
-struct hd2
-{
-    char data[9];
-};
+
 struct OF
 {
     char data[56];
@@ -354,7 +351,13 @@ class  unionWall : public Wall, public xWall {
         std::vector<unionWall>::iterator nextWall;
         std::vector<unionSector>::iterator nextSector;
         glm::vec3 get_normal();
+        int getTX() { return (over)? txID : 0;}
+        int getRX() { return (over)? rxID : 0;}
+        void setNum(int value) { num=value;}
+        int getNum() { return num;}
+        int getRefer() { return (over) ? refer: -1;}
     private:
+        int num;
 };
 
 
@@ -422,12 +425,23 @@ class  unionSector : public Sector, public xSector {
                 for_loop(i.marker, [&ret](unionWall _s){ret++; _s=_s;}); // _s=_s REMOVE IT AFTER!!!
             return ret;
         };
+        int getTX() { return (over)? txID : 0;}
+        int getRX() { return (over)? rxID : 0;}
+        void setNum(int value) { num=value;}
+        int getNum() { return num;}
+        int getRefer() { return (over) ? refer: -1;}
+        bool isInside(glm::vec3);
+        glm::vec3 get_rnd_pos(std::stringstream&);
+        glm::vec3 getCenter();
+        glm::vec2 getNNS(glm::vec2 pt, std::stringstream&);
     private:
         std::map<std::string, int> to_num={{"MotionZ", 600},{"Slide", 616}, {"Rotate", 617}, {"Slide Marked", 614}};
+        int num;
 };
 
 class  unionSprite : public Sprite, public xSprite {
     private:
+        int numberID;
         std::map<std::string, int> to_num={{"SectorSFX", 7640}, {"levelLocker", 5438},{"FootTraces", 7024},
         {"FireExt",5778}};
         std::map<std::string, int> to_type={{"Ambient SFX", 710},{"BloodDrip Gen", 702}, {"WaterDrip Gen", 701},
@@ -454,6 +468,11 @@ class  unionSprite : public Sprite, public xSprite {
         void makeFootTraces() {cstat &= ~(1<<9);};
         void makeHiddenExploder(){tag.r=waitTime*10;};
         //void makeCstat();
+        int getTX() { return (over)? txID : 0;}
+        int getRX() { return (over)? rxID : 0;}
+        void setNum(int value) { numberID=value;}
+        int getNum() { return numberID;}
+        int getRefer() { return (over) ? refer: -1;}
 };
 
 class Resources {
@@ -495,7 +514,6 @@ private:
     BloodHeader BH;
     dukeMap dh;
     unsigned int uKelm;
-    //hd2 sh;
     OF map_offset;
     int lengthMap, Revision=-1; //, posX,posY, posZ;
     float scale=1.f;
@@ -505,14 +523,13 @@ private:
 
     Resources RS;
 
-    int addSprite(int, int, int,std::string, glm::vec4);
+    int addSprite(int, int, int,std::string, std::stringstream&, glm::vec4);
     void Cstat();
     void makeEnemies();
     void makeSectorSFX(unionSprite& Sp);
-    void makeRespawn(unionSprite& Sp);
+    void makeRespawn(std::stringstream&);
     void makeExplodeAndGib();
-    std::vector<int> findAllSprites(std::vector<unionSector>::iterator the_sector);
-    glm::vec3 getRndPosition(std::vector<unionSector>::iterator the_sector);
+    std::vector<int> findAllSprites(std::vector<unionSector>::iterator the_sector);    
 
     int makeExplosiveSector(std::stringstream&);
     int makeElevatorSector(std::stringstream&);

@@ -88,9 +88,9 @@ myFunction my_func(const char* filename, std::stringstream& msg,  myFunction fn)
 
 template<typename T, typename T1> void writeVector(T &the_vector, T1 &chuck, std::ofstream &file)
 {
-    unsigned short lenght=(unsigned short)the_vector.size();
-    file.write((char*)(&lenght), sizeof(lenght));
-    for ( auto it: the_vector)
+    unsigned short length=(unsigned short)the_vector.size();
+    file.write((char*)(&length), sizeof(length));
+    for (auto it: the_vector)
     {
         chuck=dynamic_cast<T1&>(it);
         file.write((char*)(&chuck), sizeof(T1));
