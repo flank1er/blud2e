@@ -350,6 +350,7 @@ class  unionWall : public Wall, public xWall {
         std::vector<unionWall>::iterator prePoint;
         std::vector<unionWall>::iterator nextWall;
         std::vector<unionSector>::iterator nextSector;
+        std::vector<unionSector>::iterator thisSector;
         glm::vec3 get_normal();
         int getTX() { return (over)? txID : 0;}
         int getRX() { return (over)? rxID : 0;}
@@ -443,7 +444,7 @@ class  unionSprite : public Sprite, public xSprite {
     private:
         int numberID;
         std::map<std::string, int> to_num={{"SectorSFX", 7640}, {"levelLocker", 5438},{"FootTraces", 7024},
-        {"FireExt",5778}};
+        {"FireExt",5778}, {"Light switch",6198}, {"Lamp1", 7410}};
         std::map<std::string, int> to_type={{"Ambient SFX", 710},{"BloodDrip Gen", 702}, {"WaterDrip Gen", 701},
         {"Player Start", 1}, {"Hidden Exploder", 459}, {"Toggle switch", 20}, {"1-Way switch", 21},
         {"Sector SFX", 709}, {"Player SFX", 711}, {"SFX Gen", 708}, {"Explode Object", 417}, {"Gib Object", 416},
@@ -530,6 +531,7 @@ private:
     void makeRespawn(std::stringstream&);
     void makeExplodeAndGib();
     std::vector<int> findAllSprites(std::vector<unionSector>::iterator the_sector);    
+    std::vector<int> find_owner_sprites(int owner);
 
     int makeExplosiveSector(std::stringstream&);
     int makeElevatorSector(std::stringstream&);
@@ -540,6 +542,9 @@ private:
     int makeTROR(std::stringstream&);
     int makeRotateSector(std::stringstream&);
     int makeSlideDoors(std::stringstream&);
+    int makeLighting(std::stringstream& refer);
+    int makeQuotes(std::stringstream&);
+    int remove_wall(int, std::stringstream&, bool);
 
 public:
     int read(char *filename, std::stringstream&);
