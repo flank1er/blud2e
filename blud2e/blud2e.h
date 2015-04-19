@@ -411,8 +411,10 @@ class  unionSector : public Sector, public xSector {
         bool over=false;
         bool done=false;
         bool inner=false;
+        bool ssd=false; // second slide door; for processing slide marker door;
         glm::ivec3 tag;
         glm::ivec2 log;
+        glm::ivec2 dxdy;
         std::vector<unionSector>::iterator originNumber;
         std::vector<unionWall>::iterator firstWall;
         std::vector<LOOP> loops;
@@ -444,7 +446,7 @@ class  unionSprite : public Sprite, public xSprite {
     private:
         int numberID;
         std::map<std::string, int> to_num={{"SectorSFX", 7640}, {"levelLocker", 5438},{"FootTraces", 7024},
-        {"FireExt",5778}, {"Light switch",6198}, {"Lamp1", 7410}};
+        {"FireExt",5778}, {"Light switch",6198}, {"Lamp1", 7410},{"Lamp2", 5915}, {"Torch", 32}, {"Tube Lamp", 5916}};
         std::map<std::string, int> to_type={{"Ambient SFX", 710},{"BloodDrip Gen", 702}, {"WaterDrip Gen", 701},
         {"Player Start", 1}, {"Hidden Exploder", 459}, {"Toggle switch", 20}, {"1-Way switch", 21},
         {"Sector SFX", 709}, {"Player SFX", 711}, {"SFX Gen", 708}, {"Explode Object", 417}, {"Gib Object", 416},
@@ -453,7 +455,7 @@ class  unionSprite : public Sprite, public xSprite {
         void print(std::stringstream&);
         bool over=false;
         bool done=false;
-        glm::vec4 pos;
+                glm::vec4 pos;
         glm::ivec3 tag;
         glm::ivec3 vel;
         glm::ivec2 log;
@@ -545,14 +547,14 @@ private:
     int makeLighting(std::stringstream& refer);
     int makeQuotes(std::stringstream&);
     int remove_wall(int, std::stringstream&, bool);
-
+    int makeSDSS(std::stringstream&);     // Slide Doors Sprite System = SDSS;
 public:
     int read(char *filename, std::stringstream&);
     int read_text_file_to_string(const char*, std::string&, std::stringstream&);
     int write(char *filename, std::stringstream&);
     int write_v7B(char* filename, std::stringstream&);
     int write_obj(int, char*filename, std::stringstream&);
-
+    int get_prv_point(int, int);
     int prepare(std::stringstream&);
 	int finish();
     int check(std::stringstream&);

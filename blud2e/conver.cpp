@@ -1054,109 +1054,304 @@ int blud2e::makeSlideDoors(std::stringstream& refer)
 
     refer<< std::endl << "found Slide Doors: ";
     for(auto T: sector_list) refer<< T << " "; refer << std::endl;
-
+    int j=0;
     for(auto T: sector_list)
     {
-        auto markers=find_owner_sprites(T);
-        if ((int)markers.size() != 2 || sV.at(T).wallnum < 6)
+        int p0=sV.at(T).marker0;
+        int p1=sV.at(T).marker1;
+
+        if (spV.at(p0).owner != T  || spV.at(p1).owner != T || sV.at(T).wallnum < 6 )
+               continue;
+
+        int x0=spV.at(p0).x;
+        int y0=spV.at(p0).y;
+        int x1=spV.at(p1).x;
+        int y1=spV.at(p1).y;
+        int dx=x0-x1;
+        int dy=y0-y1;
+
+        for (int i=sV.at(T).wallptr; i < (sV.at(T).wallptr+sV.at(T).wallnum); i++)
         {
-            continue;
+            int p2=wV.at(i).point2;
+            int xm=(wV.at(i).x+wV.at(p2).x)/2;
+            int ym=(wV.at(i).y+wV.at(p2).y)/2;
 
-        } else
-        {
-            int p0=markers.at(0);
-            int p1=markers.at(1);
-            int x0=spV.at(p0).x;
-            int y0=spV.at(p0).y;
-            int x1=spV.at(p1).x;
-            int y1=spV.at(p1).y;
-            int dx=x0-x1;
-            int dy=y0-y1;
-
-
-            for_loop(sV.at(T).generic->marker, [&](unionWall& _w) mutable
+            if ((xm == spV.at(p1).x && ym == spV.at(p1).y) || ( xm == (spV.at(p0).x+dx) && ym == (spV.at(p0).y+dy)))
             {
-                int xm=(_w.x+ _w.nextPoint->x)/2;
-                int ym=(_w.y+ _w.nextPoint->y)/2;
+                int i2=wV.at(i).point2;
+                int i3=wV.at(i2).point2;
+                int i0=get_prv_point(T,i);
+                int iabs=-1;
+                if (i0>=0)
+                    iabs=get_prv_point(T,i0);
+                if (wV.at(i).x != wV.at(iabs).x && wV.at(i).y != wV.at(iabs).y)
+                    continue;
+
+                unionWall wa,wb,wc,wd;
+                wa=wV.at(i0);
+                wb=wV.at(i);
+                wc=wV.at(i2);
+                wd=wV.at(i3);
+
+                wd.point2=sV.at(T).wallptr;
+                wa.point2=sV.at(T).wallptr+1;
+                wb.point2=sV.at(T).wallptr+2;
+                wc.point2=sV.at(T).wallptr+3;
+
+                wa.nextsector=wb.nextsector=wc.nextsector=wd.nextsector=sV.size();
 
                 if (xm == spV.at(p1).x && ym == spV.at(p1).y)
                 {
-                    auto i2=_w.nextPoint;
-                    auto i3=i2->nextPoint;
-                    auto i0=_w.prePoint;
-                    auto iabs=i0->prePoint;
-                    if (_w.x != iabs->x && _w.y !=iabs->y)
-                        return -1;
-                    refer << "found Slide-Door Sector: " << T << std::endl;
-                    unionWall wa,wb,wc,wd;
-                    wa=*i0; wb=_w; wc=*i2; wd=*i3;
+                    wa.x += dx;
+                    wa.y += dy;
+                    wb.x += dx;
+                    wb.y += dy;
+                    wc.x += dx;
+                    wc.y += dy;
+                    wd.x += dx;
+                    wd.y += dy;
 
-                    //w.at(i).x=w.at(i0).x;
-                    //w.at(i).y=w.at(i0).y;
-                    //w.at(i2).x =w.at(i3).x;
-                    //w.at(i2).y =w.at(i3).y;
-
-                    _w.pos.x=i0->pos.x;
-                    _w.pos.y=i0->pos.y;
-                    i2->pos.x =i3->pos.x;
-                    i2->pos.y =i3->pos.y;
-
-
-                } else if ( xm == (spV.at(p0).x+dx) && ym == (spV.at(p0).y+dy))
+                    sV.at(T).log.x=getSectors();
+                    sV.at(T).dxdy=glm::ivec2(dx,dy);
+                } else
                 {
-                    auto i2=_w.nextPoint;
-                    auto i3=i2->nextPoint;
-                    auto i0=_w.prePoint;
-                    auto iabs=i0->prePoint;
-                    if (_w.x != iabs->x && _w.y !=iabs->y)
-                        return -1;
+                    wa.x -= dx;
+                    wa.y -= dy;
+                    wb.x -= dx;
+                    wb.y -= dy;
+                    wc.x -= dx;
+                    wc.y -= dy;
+                    wd.x -= dx;
+                    wd.y -= dy;
 
-                    unionWall wa,wb,wc,wd;
-                    wa=*i0; wb=_w; wc=*i2; wd=*i3;
+                    sV.at(T).log.y=getSectors();
+                    sV.at(T).ssd=true;
 
-                    _w.pos.x=i0->pos.x;
-                    _w.pos.y=i0->pos.y;
-                    i2->pos.x =i3->pos.x;
-                    i2->pos.y =i3->pos.y;
-
-
+                    if ( x0 == x1 && y0 >= y1)
+                        spV.at(p1).ang=1536;
+                    else if (x0 == x1 && y0 <= y1)
+                        spV.at(p1).ang=512;
+                    else if (y0==y1 && x0 >= x1)
+                        spV.at(p1).ang=1024;
+                    else
+                        spV.at(p1).ang=0;
                 }
 
-            });
+                wV.at(i).x=wV.at(i0).x;
+                wV.at(i).y=wV.at(i0).y;
+                wV.at(i2).x =wV.at(i3).x;
+                wV.at(i2).y =wV.at(i3).y;
+                {
+                    float scale=1.05;
+                    float scale2=1.1;
+
+                    int Mx=(int)((wV.at(i0).x + wV.at(i).x + wV.at(i2).x + wV.at(i3).x)/4);
+                    int My=(int)((wV.at(i0).y + wV.at(i).y + wV.at(i2).y + wV.at(i3).y)/4);
+
+                    wV.at(i0).x=(int)((Mx-wV.at(i0).x)*scale2)+Mx;
+                    wV.at(i0).y=(int)((wV.at(i0).y-My)*scale2)+My;
+                    wV.at(i).x=(int)((Mx-wV.at(i).x)*scale2)+Mx;
+                    wV.at(i).y=(int)((wV.at(i).y-My)*scale2)+My;
+                    wV.at(i2).x=(int)((Mx-wV.at(i2).x)*scale2)+Mx;
+                    wV.at(i2).y=(int)((wV.at(i2).y-My)*scale2)+My;
+                    wV.at(i3).x=(int)((Mx-wV.at(i3).x)*scale2)+Mx;
+                    wV.at(i3).y=(int)((wV.at(i3).y-My)*scale2)+My;
+
+                    int i00=get_prv_point(T,i0);
+                    int i4=wV.at(i3).point2;
+                    Mx=(int)((wV.at(i00).x + wV.at(i4).x)/2);
+                    My=(int)((wV.at(i00).y + wV.at(i4).y)/2);
+                    wV.at(i4).x=(int)((Mx-wV.at(i4).x)*scale)+Mx;
+                    wV.at(i4).y=(int)((wV.at(i4).y-My)*scale)+My;
+                    wV.at(i00).x=(int)((Mx-wV.at(i00).x)*scale)+Mx;
+                    wV.at(i00).y=(int)((wV.at(i00).y-My)*scale)+My;
+                }
+
+                auto it=wV.begin() + sV.at(T).wallptr;
+                wd.over=wa.over=wb.over=wc.over=false;
+                wV.insert(it,wd);
+                wV.insert(it,wc);
+                wV.insert(it,wb);
+                wV.insert(it,wa);
+
+                sV.at(T).wallnum +=4;
+
+                for (int k=T+1; k < (int)sV.size(); k++)
+                    sV.at(k).wallptr+=4;
+
+                for (int k=sV.at(T).wallptr+4; k < (int)wV.size(); k++)
+                {
+                    if (wV.at(k).point2 >= (sV.at(T).wallptr))
+                        wV.at(k).point2+=4;
+                };
+
+                for (int k=0; k < (int)wV.size(); k++)
+                {
+                    if (wV.at(k).nextwall >= (sV.at(T).wallptr))
+                        wV.at(k).nextwall+=4;
+                    if (wV.at(k).extra >= 0 && wV.at(k).refer >= sV.at(T).wallptr)
+                        wV.at(k).refer +=4;
+                };
+
+                int nptr=(int)wV.size();
+
+
+                unionSector ns=sV.at(T);
+                ns.wallptr=wV.size();
+                ns.wallnum=4;
+                int h=sV.at(T).ceilingz;
+                ns.floorz=h;
+                ns.over=false;
+                sV.push_back(ns);
+
+                wa.nextsector=wb.nextsector=wc.nextsector=wd.nextsector=T;
+                wa.extra=wb.extra=wc.extra=wd.extra=-1;
+                wa.point2=nptr+1; // w3
+                wd.point2=nptr+2; // w2
+                wc.point2=nptr+3; // w1
+                wb.point2=nptr;   // w0
+
+                wa.nextwall=sV.at(T).wallptr+3;
+                wd.nextwall=sV.at(T).wallptr+2;
+                wc.nextwall=sV.at(T).wallptr+1;
+                wb.nextwall=sV.at(T).wallptr;
+
+                wV.push_back(wa);
+                wV.push_back(wd);
+                wV.push_back(wc);
+                wV.push_back(wb);
+
+                wV.at(wV.at(nptr).nextwall).nextwall=nptr;
+                wV.at(wV.at(nptr+1).nextwall).nextwall=nptr+1;
+                wV.at(wV.at(nptr+2).nextwall).nextwall=nptr+2;
+                wV.at(wV.at(nptr+3).nextwall).nextwall=nptr+3;
+            }
+
+            if ( x0 == x1 && y0 >= y1)
+                spV.at(p0).ang=512;
+            else if (x0 == x1 && y0 <= y1)
+                spV.at(p0).ang=1536;
+            else if (y0==y1 && x0 >= x1)
+                spV.at(p0).ang=0;
+            else
+                spV.at(p0).ang=1024;
 
         }
-    }
 
-    int j=0;
-    for (auto i=wV.begin(); i != wV.end(); i++)
-    {
-        if ((i->pos.x == i->nextPoint->pos.x) && (i->pos.y == i->nextPoint->pos.y))
+        for (int i=sV.at(T).wallptr; i < (sV.at(T).wallptr+sV.at(T).wallnum); i++)
         {
-            remove_wall(i->getNum(), refer,true);
-            j++;
-        };
+            if (wV.at(i).x == wV.at(wV.at(i).point2).x && wV.at(i).y == wV.at(wV.at(i).point2).y)
+            {
+               remove_wall(i, refer, true);
+               j++;
+
+            };
+        }
     };
     refer << "was removed " << j << " walls\n";
     refer << std::endl;
-    check(refer);
-/*
-    std::vector<int> for_delete;
-    for(auto T: wV)
-    {
-        if ((T.pos.x == T.nextPoint->pos.x) && (T.pos.y == T.nextPoint->pos.y))
-            for_delete.push_back(T.getNum());
-    }
-    if (for_delete.size() >0 )
+    //check(refer);
 
-    {
-        refer << "for delete: " << for_delete.size() << " walls." << std::endl;
-        remove_wall(for_delete, refer, true);
-    }
-*/
     int ret =get_done(sV)-last;
     refer << "was done: " << ret << " Slide Doors" << std::endl;
 	return ret;
 };
+
+int blud2e::makeSDSS(std::stringstream& refer)
+{
+
+    int last=get_done(sV);
+    std::set<int> sector_list;
+    for(auto it=sV.begin(); it != sV.end(); it++)
+        if(it->over && !it->done && it->is("Slide Marked"))
+            sector_list.insert(it-sV.begin());
+
+    refer<< std::endl << "found Slide Doors: ";
+    for(auto T: sector_list) refer<< T << " "; refer << std::endl;
+    for(auto T: sector_list)
+    {
+        if (sV.at(T).log.x > 0)
+        {
+            refer << T << " ";
+            int ch=channel(sV.at(T).rxID);
+            int chx=channel();
+            int key=sV.at(T).key;
+
+            auto sprites=findAllSprites((sV.begin()+T));
+            int p0=sV.at(T).marker0;
+            int p1=sV.at(T).marker1;
+            int d0=sV.at(T).log.x;
+            int d1=sV.at(T).log.y;
+            int dx=sV.at(T).dxdy.x;
+            int dy=sV.at(T).dxdy.y;
+
+            if (key == 0)
+            {
+                for_loop(sV.at(d0).firstWall, [&] (unionWall _w)
+                {
+                   key =(_w.key > key) ? _w.key : key;
+                });
+            }
+
+            glm::vec3 rnd_pos=sV.at(d0).get_rnd_pos(refer);
+            for(auto S: sprites)
+            {
+                spV.at(S).sectnum=d0;
+                spV.at(S).owner=0;
+                spV.at(S).inSector=(sV.begin()+d0);
+
+                if (spV.at(S).isType("Sector SFX"))
+                {
+                    spV.at(S).texture_id=5;
+                    spV.at(S).vel.x=chx;
+                    spV.at(S).pos.x=rnd_pos.x;
+                    spV.at(S).pos.y=rnd_pos.y;
+                }
+            }
+
+            addSprite(d0,ch, chx, "SWITCH", refer);
+            spV.at(p0).texture_id=1;
+            spV.at(p0).vel.x=spV.at(p0).tag.g=chx;
+            spV.at(p0).tag.r=64;
+
+            spV.at(p1).texture_id=17;
+            spV.at(p1).tag.r=key;
+            spV.at(p1).tag.g=30;
+            spV.at(p1).vel.z=1;
+
+            spV.at(p1).vel.y=sV.at(d0).tag.g=chx;
+            addSprite(d0, chx, 0,"GPSPEED", refer);
+            lastSprite.tag.r=sqrt(dx*dx+dy*dy)*scale-32;
+            lastSprite.tag.g=0;
+
+            if (d1 > 0 && d1 < getSectors())
+            {
+                int chX=channel();
+                sV.at(d1).tag.g=chX;
+                addSprite(d1, chx, ch, "SE64", refer,spV.at(p0).pos);
+                lastSprite.tag.g=chX;
+                lastSprite.ang=spV.at(p1).ang;
+                addSprite(d1, chx, ch, "TC_LOCKER", refer,spV.at(p0).pos);
+                lastSprite.pos.x+=dx*scale;
+                lastSprite.pos.y+=dy*scale;
+                lastSprite.ang=spV.at(p1).ang;
+                lastSprite.tag.r=key;
+                addSprite(d1, chX, 0,"GPSPEED", refer);
+                lastSprite.tag.r=sqrt(dx*dx+dy*dy)*scale-32;
+                lastSprite.tag.g=0;
+
+            }
+            spV.at(p1).ang=spV.at(p0).ang;
+        }
+
+    }
+    refer << std::endl;
+
+
+    int ret =get_done(sV)-last;
+    refer << "was done: " << ret << " Slide Doors Sprite System" << std::endl;
+    return ret;
+}
 
 int blud2e::makeLighting(std::stringstream& refer)
 {
@@ -1214,9 +1409,81 @@ int blud2e::makeLighting(std::stringstream& refer)
             lastSprite.owner=1;
 
         }
+    }
+    std::set<int> lamp_sectors;
+    for(auto it=spV.begin(); it != spV.end(); it++)
+        if(it->is("Lamp1") || it->is("Lamp2") && (it->triggerVector || it->triggerImpact))
+        {
+            auto sector=it->inSector-sV.begin();
+            auto sprites=findAllSprites(it->inSector);
+            bool torch=false;
+            for(auto S:sprites) if (spV.at(S).is("Torch"))
+            {
+                torch =true;
+                break;
+            }
 
+            if (!torch && it->inSector->over)
+                lamp_sectors.insert(it->inSector -sV.begin());
+        };
+
+    refer << std::endl << "found sectors witch breakables lamps: ";
+    for (auto T: lamp_sectors)
+    {
+        //refer << T << " ";
+
+        int ch1=channel();
+        int ch2=channel();
+        int ch3=channel();
+        auto sec=sV.begin()+T;
+        auto sList=findRx(sV, sec->rxID, -1, -1,true);
+        if (sList.size() >0 )
+        {
+            refer << " (";
+            for (auto Z:sList)
+            {
+                if(sV.at(Z).over && sV.at(Z).amplitude != 0)
+                {
+                    refer << Z << " ";
+                    addSprite(Z, ch1, sV.at(Z).amplitude , "TC_LIGHTING", refer);
+                    lastSprite.tag.g=1;
+                }
+            }
+            refer << "), ";
+        }
+        auto lamps_here=findAllSprites(sec);
+        int l=0;
+        for(auto L: lamps_here)
+            if ((spV.at(L).is("Lamp1") || spV.at(L).is("Lamp2")) &&
+                 (spV.at(L).triggerVector || spV.at(L).triggerImpact))
+            {
+                l++;
+                 spV.at(L).vel.y=ch3;
+            }
+        addSprite(T, ch2, ch1, "SWITCH", refer);
+        lastSprite.vel.z=9;
+        lastSprite.owner=1;
+        addSprite(T, ch2, ch3, "PushTrigger", refer);
+        lastSprite.vel.z=3;
+        lastSprite.tag.g=l;
+        lastSprite.cstat=0;
+        lastSprite.vel.x=ch3;
+        lastSprite.owner=1;
+    }
+
+    int j=0;
+    for(auto T: sV) if (T.over && T.amplitude != 0)
+    {
+        addSprite(T.getNum(), 0, T.amplitude, "TC_LIGHTING", refer);
+        lastSprite.tag.g=1;
+        if ( T.wave > 5)
+            lastSprite.vel.z=4;
+        j++;
 
     }
+    refer << std::endl << "add " << j << " static light.";
+
+    refer << std::endl;
 
 
     check(refer);
@@ -1621,138 +1888,52 @@ int blud2e::prepare(std::stringstream& msg)
     return EXIT_SUCCESS;
 };
 
+int blud2e::get_prv_point(int num, int point)
+{
+    for (int i=0; i < (int)wV.size(); i++)
+    {
+        if (wV.at(i).point2 == point)
+            return i;
+    };
+    return -1;
+};
+
 int blud2e::remove_wall(int num, std::stringstream& msg, bool nextwall=true)
 {
-
-    if ((int)wV.size() <  num)
+   if ((int)wV.size() <=  num)
         return EXIT_FAILURE;
 
-    auto it=wV.begin()+num;
+    auto it=wV.begin() + num;
 
     int sCount=sV.size()-1;
     while (sV.at(sCount).wallptr > num)
         sCount--;
 
     if (wV.at(num).nextwall != -1 && nextwall)
-        remove_wall(wV.at(num).nextwall, msg, false);
+        remove_wall(wV.at(num).nextwall, msg , false);
 
-    it->prePoint->point2=it->point2;
-    it->prePoint->nextPoint=it->nextPoint;
-    it->nextPoint->prePoint=it->prePoint;
-    sV.at(sCount).wallnum--;
+    int pp=get_prv_point(sCount, num);
+    wV.at(pp).point2=wV.at(num).point2;
     wV.erase(it);
+    sV.at(sCount).wallnum--;
 
     for (int i=sCount+1; i < (int)sV.size(); i++)
-    {
             sV.at(i).wallptr--;
-            sV.at(i).firstWall--;
-    }
 
     for (int i=0; i < (int)wV.size(); i++)
     {
         if (wV.at(i).point2 >= num)
-        {
             wV.at(i).point2--;
-            wV.at(i).nextPoint--;
-        };
-        if (wV.at(i).prePoint >= it)
-            wV.at(i).prePoint--;
     };
 
     for (auto it=wV.begin();it != wV.end(); ++it)
     {
         if (it->nextwall >= num)
             it->nextwall--;
+        if (it->extra >= 0 && it->refer >= num)
+            it->refer--;
     };
 
-    for (auto& T: wV)
-    {
-        static int n=0; T.setNum(n);
-
-        if (T.nextwall < 0)
-            T.nextWall=wV.end();
-        else
-            T.nextWall=wV.begin() + T.nextwall;
-
-        n++;
-    };
-
-    for (auto i=0; i<(int)wV.size(); i++)
-    {
-        wV.at(i).nextPoint=wV.begin()+wV.at(i).point2;
-        wV.at(wV.at(i).point2).prePoint=wV.begin()+i;
-        wV.at(i).setNum(i);
-        if(wV.at(i).over)
-            wV.at(i).refer=i;
-    }
-
-
-    for (auto& T : sV)
-    {
-        T.loops.erase(T.loops.begin(), T.loops.end());
-
-        LOOP new_loop;
-        new_loop.marker=T.firstWall;
-        for(int walls=0; walls < T.wallnum;)
-        {
-            T.loops.push_back(new_loop);
-            for_loop(new_loop.marker, [&walls] (unionWall _s) { walls++;});
-            new_loop.marker= T.firstWall+walls;
-        };
-
-        T.generic=T.loops.begin();
-
-        if ((int)T.loops.size() < 2 ) continue;
-        for (auto it=T.loops.begin(); it!=T.loops.end(); it++)
-        {
-            glm::vec3 n=glm::vec3(0.f);
-            for_loop(it->marker, [&n] (unionWall _s) { n+=_s.get_normal();});
-            if (n.z > 0) { T.generic=it; break; };
-        };
-    };
-
-    for (auto& T: sV)
-    {
-        std::vector<unionWall>::iterator first, it;
-        for(auto& K : T.loops)
-        {
-            if (K.marker == T.generic->marker)
-                K.set_property("generic");
-
-            std::set<int> ns, dots, normals;
-
-            for_loop(K.marker, [&ns, &dots, &normals](unionWall _s) {
-                glm::vec3 a,b;
-                a=_s.pos - _s.nextPoint->pos;
-                b=_s.pos - _s.prePoint->pos;
-                dots.insert(glm::dot(a,b));
-
-                a=_s.get_normal();
-                normals.insert(a.z);
-
-                ns.insert(_s.nextsector);
-            });
-
-            if ((int)ns.size() == 1 && ns.count(-1))
-                K.set_property("loop");
-            if ((int)ns.size() == 1 && !ns.count(-1) && K.property("generic"))
-                K.set_property("inner");
-            if ((int)dots.size() == 1 && T.wallnum == 4  && dots.count(0))
-                K.set_property("rectangle");
-
-            bool positive=false, negative=false;
-            for(auto J : normals)
-            {
-                if (J < 0) negative=true;
-                else if (J>0) positive=true;
-            };
-
-            if ((positive && !negative) || (!positive && negative))
-                K.set_property("proper");
-        };
-    };
-
-    //check(msg);
     return EXIT_SUCCESS;
 };
 
@@ -1825,6 +2006,7 @@ int blud2e::makeQuotes(std::stringstream& msg)
 int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
     scale=scope;
 
+    makeSlideDoors(msg);
     if (prepare(msg) == EXIT_FAILURE)
     {
         msg << "ERROR: missing files: sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
@@ -1877,7 +2059,8 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
     makeSlideSector(msg);
     makeEnterSensor(msg);
     makeRotateSector(msg);
-    makeSlideDoors(msg);
+    makeSDSS(msg);
+
 
     makeController(msg);
     makeQuotes(msg);
