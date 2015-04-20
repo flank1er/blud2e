@@ -24,6 +24,11 @@
 #define SE std::endl
 #define lastSprite spV.at(spV.size()-1)
 
+struct WL {
+    int num;
+    glm::ivec2 pt;
+};
+
 
 bool fileExists(const char*);
 
@@ -523,6 +528,7 @@ private:
     std::map<int,std::string> map_descriptor={{-7, "Blood"}, {7, "Duke3D"}, {9, "EDuke32"}}; // ENUM ??
     int map_specification;
     void showInfo(std::stringstream&);
+    std::string mapIs; // for dirty hacks
 
     Resources RS;
 
@@ -548,6 +554,10 @@ private:
     int makeQuotes(std::stringstream&);
     int remove_wall(int, std::stringstream&, bool);
     int makeSDSS(std::stringstream&);     // Slide Doors Sprite System = SDSS;
+    int slideROR(std::stringstream& msg);
+    int get_wall_maplevel(int, int, int, std::stringstream&);
+    int division_wall_maplevel(int, int, int, bool);
+    int wall_subdivision_ror(int, int, std::stringstream&);
 public:
     int read(char *filename, std::stringstream&);
     int read_text_file_to_string(const char*, std::string&, std::stringstream&);

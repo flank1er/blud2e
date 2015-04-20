@@ -119,6 +119,7 @@ int main(int argc, char *argv[]) {
         else if ( mode == "convert" )
         {
             if (map.processing(log, 0.75f) == EXIT_FAILURE) // C O N V E R S I O N
+            //if (map.processing(log, 1.f) == EXIT_FAILURE) // C O N V E R S I O N
             {
                 std::cout << log.str();
                 return EXIT_FAILURE;

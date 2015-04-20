@@ -307,6 +307,16 @@ glm::vec2 unionSector::getNNS(glm::vec2 pt, std::stringstream& msg)
 
 }
 
+int blud2e::get_wall_maplevel(int num, int x, int y, std::stringstream& msg)
+{
+    for(int i=sV.at(num).wallptr; i < (sV.at(num).wallptr + sV.at(num).wallnum); i++)
+    {
+        if (wV.at(i).x == x && wV.at(i).y == y)
+            return i;
+    }
+    return -1;
+}
+
 template<typename T> int get_done(T& t)
 {
     int ret=0;
@@ -434,7 +444,8 @@ int blud2e::addSprite(int room,  int rxChannel, int txChannel ,std::string name,
     nsp.vel=glm::ivec3(0);
     nsp.cstat=0x01;
     nsp.texture_id=1;
-    nsp.owner=nsp.shade=nsp.xoffset=nsp.yoffset=nsp.ang=nsp.pal=nsp.statnum=0;
+    nsp.shade=nsp.xoffset=nsp.yoffset=nsp.ang=nsp.pal=nsp.statnum=0;
+    nsp.owner=-1;
     nsp.xrepeat=nsp.yrepeat=64;
     nsp.setNum(getSprites());
 
@@ -896,7 +907,10 @@ int blud2e::makeTROR(std::stringstream& refer)
                 refer<<"movement lower sectors:"; down.print(refer); refer<<SE;
                 down.moveIt(wV, sV, spV, T.diff);
             }
-        } else if (up == down && T.diff.z == 0 && (sV.at(T.up).generic->property("inner") || sV.at(T.down).generic->property("inner")))
+        //} else if (up == down && T.diff.z == 0)
+       } else if (up == down && T.diff.z == 0 &&
+                  (sV.at(T.up).generic->property("inner") || sV.at(T.down).generic->property("inner")
+                  || mapIs == "e1m1" ))
         {
             auto itS=sV.begin();
             if (sV.at(T.up).generic->property("inner"))
@@ -1472,12 +1486,18 @@ int blud2e::makeLighting(std::stringstream& refer)
     }
 
     int j=0;
-    for(auto T: sV) if (T.over && T.amplitude != 0)
+    for(auto& T: sV) if (T.over && T.amplitude != 0)
     {
         addSprite(T.getNum(), 0, T.amplitude, "TC_LIGHTING", refer);
-        lastSprite.tag.g=1;
+        lastSprite.tag.g=1;        
         if ( T.wave > 5)
+        {
             lastSprite.vel.z=4;
+            //lastSprite.owner=1;
+            int ch=channel();
+            lastSprite.tag.r=ch;
+            T.tag.g=ch;
+        }
         j++;
 
     }
@@ -1937,6 +1957,236 @@ int blud2e::remove_wall(int num, std::stringstream& msg, bool nextwall=true)
     return EXIT_SUCCESS;
 };
 
+int blud2e::slideROR(std::stringstream& refer)
+{
+    std::set<int> e1m1ROR={65,146,145,55, 51,50,44,45,56};
+    std::set<int> joint;
+    bool map_size=true;
+    for (auto T: e1m1ROR) if ((int)sV.size() <= T)
+        map_size=false;
+
+    if (map_size && sV.at(65).marker0 == 138 && sV.at(65).marker1 == 139)
+    {
+        refer <<std::endl<<  "map E1M1.MAP detect" << std::endl;
+        mapIs="e1m1";
+        auto m0=spV.begin()+140; // upper stack
+        auto m1=spV.begin()+0;   // lower stack
+        int dx=m1->x - m0->x;
+        int dy=m1->y - m0->y;
+        refer << "dx: " << dx << " dy: " << dy<< std::endl;
+        sV.at(65).ceilingz=sV.at(90).floorz;
+
+        for(auto T: e1m1ROR)
+            for(int i=0, j=sV.at(T).wallptr; i < sV.at(T).wallnum; i++, j++ )
+            {
+                if (wV.at(j).nextsector >= 0 && !e1m1ROR.count(wV.at(j).nextsector))
+                    joint.insert(wV.at(j).nextsector);
+            }
+
+        if (joint.size() > 0)
+        {   refer << "joint sectors: ";
+            for(auto T: joint)
+                refer << T << " ";
+            refer << std::endl;
+        }
+
+        for (auto T: joint)
+        {
+            for(int i=sV.at(T).wallptr; i < (sV.at(T).wallptr + sV.at(T).wallnum); i++)
+            {
+                int ns=wV.at(i).nextsector;
+                int nw=wV.at(i).nextwall;
+                int p2=wV.at(i).point2;
+                int nsp2=wV.at(p2).nextsector;
+
+               if (ns >= 0 && e1m1ROR.count(ns))
+               {
+                   wV.at(i).x -=dx;
+                   wV.at(i).y -=dy;
+               }
+               if (nsp2 < 0 && e1m1ROR.count(ns))
+               {
+                   wV.at(p2).x -=dx;
+                   wV.at(p2).y -=dy;
+               };
+            }
+        }
+
+        for(auto T: e1m1ROR)
+        {
+            for(int i=sV.at(T).wallptr; i < (sV.at(T).wallptr + sV.at(T).wallnum); i++)
+            {
+               wV.at(i).x -=dx;
+               wV.at(i).y -=dy;
+            }
+        }
+
+        for (auto& T: spV)  if (e1m1ROR.count(T.sectnum))
+        {
+            T.x -=dx;
+            T.y -=dy;
+        }
+    }
+
+    wall_subdivision_ror(65, 90, refer);
+    return EXIT_SUCCESS;
+}
+
+int blud2e::wall_subdivision_ror(int lower, int upper, std::stringstream& refer)
+{
+
+    int first_lower=get_wall_maplevel(upper, wV.at(sV.at(lower).wallptr).x, wV.at(sV.at(lower).wallptr).y, refer);
+    int first_upper=get_wall_maplevel(lower, wV.at(sV.at(upper).wallptr).x, wV.at(sV.at(upper).wallptr).y, refer);
+
+    if (first_lower < 0 || first_upper < 0)
+    {
+        refer << "ERROR: can't find first walls\n";
+        return EXIT_FAILURE;
+    }
+
+   refer << SE <<"wall count "
+          << lower << ": "
+          << sV.at(lower).wallnum
+          << " first: "
+          <<  sV.at(lower).wallptr
+          << " analog: "
+          <<  first_lower
+          << std::endl;
+
+   refer << "wall count "
+          << upper << ": "
+          << sV.at(upper).wallnum
+          << " first: "
+          << sV.at(upper).wallptr
+          <<  " analog: "
+          <<  first_upper
+          <<  std::endl;
+
+    std::vector<WL> st;
+    for(int i=sV.at(lower).wallptr; i < (sV.at(lower).wallptr + sV.at(lower).wallnum); i++)
+    {
+        int u=get_wall_maplevel(upper, wV.at(i).x, wV.at(i).y, refer);
+        if (u >= 0)
+        {
+            glm::ivec2 l0=glm::ivec2(wV.at(i).x, wV.at(i).y);
+            glm::ivec2 l1=glm::ivec2(wV.at(wV.at(i).point2).x, wV.at(wV.at(i).point2).y);
+            glm::ivec2 u0=glm::ivec2(wV.at(u).x, wV.at(u).y);
+            glm::ivec2 u1=glm::ivec2(wV.at(wV.at(u).point2).x, wV.at(wV.at(u).point2).y);
+            assert(l0 == u0);
+            int dL=glm::distance(l0,l1);
+            int dU=glm::distance(u0,u1);
+
+            if (dL > dU)
+            {
+                //division_wall_maplevel(i,refer, wV.at(wV.at(u).point2).x, wV.at(wV.at(u).point2).y, true);
+                //wall_subdivision_ror(lower, upper, refer);
+                //return EXIT_SUCCESS;
+                refer << "lower wall: " << i << std::endl;
+                WL wl;
+                wl.num=i;
+                wl.pt=u1;
+                st.push_back(wl);
+            } else if (dL < dU)
+            {
+                //division_wall_maplevel(u,refer, wV.at(wV.at(i).point2).x, wV.at(wV.at(i).point2).y, true);
+                //wall_subdivision_ror(lower, upper, refer);
+                //return EXIT_SUCCESS;
+                refer << "upper wall: " << u << std::endl;
+                WL wl;
+                wl.num=u;
+                wl.pt=l1;
+                st.push_back(wl);
+                break; //// !!! remove it
+            }
+        }
+    }
+    if ((int)st.size() > 0)
+    {
+        auto it=st.begin();
+        refer << "found wall for division: " << st.size() << SE;
+        refer << "wall division: " << it->num << " x: " << it->pt.x << " y: " << it->pt.y <<SE;
+        division_wall_maplevel(it->num, it->pt.x, it->pt.y, true);
+        wall_subdivision_ror(lower, upper, refer);
+    }
+    return EXIT_SUCCESS;
+}
+
+int blud2e::division_wall_maplevel(int wall, int x=-1, int y=-1, bool nextwall=true)
+{
+    int x1,y1, x2, y2;
+    if (wall < 0 || wall >= (int)wV.size())
+        return EXIT_FAILURE;
+
+    if (x == -1 && y == -1) {
+        x=(wV.at(wall).x+wV.at(wV.at(wall).point2).x)/2;
+        y=(wV.at(wall).y+wV.at(wV.at(wall).point2).y)/2;
+    };
+
+    if ( nextwall && wV.at(wall).nextwall >= 0 && wV.at(wall).nextwall < wall)
+    {
+        wall= wV.at(wall).nextwall;
+    }
+
+    unionWall nw=wV.at(wall);
+    int nwall=wV.at(wall).nextwall;
+
+    if (wV.at(wall).nextwall >= 0 && nextwall )
+    {
+        division_wall_maplevel(wV.at(wall).nextwall,x,y,false);
+        nw.nextwall++;
+    }
+    // X_REPEAT - wall texturing
+    glm::ivec2 a=glm::ivec2(wV.at(wall).x, wV.at(wall).y);
+    glm::ivec2 b=glm::ivec2(x, y);
+    glm::ivec2 c=glm::ivec2(wV.at(wV.at(wall).point2).x, wV.at(wV.at(wall).point2).y);
+    float dist_full=glm::distance(a,c);
+    float dist_old=glm::distance(b,c);
+    float dist_new=glm::distance(a,b);
+    wV.at(wall).xrepeat *=dist_old/dist_full;
+    nw.xrepeat *=dist_new/dist_full;
+
+    wV.at(wall).x=x;
+    wV.at(wall).y=y;
+
+    nw.point2=wall+1;
+
+    int sCount=sV.size()-1;
+    while (sV.at(sCount).wallptr > wall)
+        sCount--;
+
+    SC << "Division Sector: " << sCount << std::endl;
+    SC << "Division Wall: " << wall << std::endl;
+    sV.at(sCount).wallnum++;
+
+    auto it=wV.begin()+wall;
+    nw.over=false;
+
+    wV.insert(it,nw);
+
+    for (int i=sCount+1; i < (int)sV.size(); i++)
+            sV.at(i).wallptr++;
+
+    for (int i=wall+1; i < (int)wV.size(); i++)
+    {
+        if (wV.at(i).point2 > wall)
+            wV.at(i).point2++;
+    };
+
+
+    for (auto it=wV.begin();it != wV.end(); ++it)
+    {
+        if (it->nextwall > wall)
+            it->nextwall++;
+        if (it->extra >= 0 && it->refer >= wall)
+            it->refer++;
+    };
+
+    if (nextwall && wV.at(nwall+1).nextsector >0)
+        wV.at(++nwall).nextwall++;
+
+    return EXIT_SUCCESS;
+}
+
 int blud2e::finish()
 {
     for (auto& T: wV)
@@ -2006,6 +2256,8 @@ int blud2e::makeQuotes(std::stringstream& msg)
 int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
     scale=scope;
 
+    slideROR(msg);
+
     makeSlideDoors(msg);
     if (prepare(msg) == EXIT_FAILURE)
     {
@@ -2036,7 +2288,7 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
         else if(T.isType("Sector SFX") || T.isType("SFX Gen") || T.isType("Player SFX"))
             makeSectorSFX(T);
 
-        if (T.is("Lamp1"))
+        if (T.is("Lamp1") || T.is("Lamp2"))
             T.cstat=0x121;
 
     };
@@ -2047,7 +2299,17 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
     makeLighting(msg);
 
     // secret room
-    for (auto& T: sV) { if ( T.over && T.txID == 2)  LT=32767;}
+    for (auto& T: sV)
+    {
+        if ( T.over && T.txID == 2)  LT=32767;
+        if (T.over && T.panFloor)
+        {
+            addSprite(T.getNum(), 0, 0, "SE10", msg);
+            lastSprite.tag.r=24;
+            lastSprite.ang=T.panAngle;
+            T.floorstat=0x30;
+        }
+    }
 
     for (auto& T: spV)  if(T.isType("Hidden Exploder")) T.makeHiddenExploder();
 
