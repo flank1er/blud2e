@@ -678,7 +678,8 @@ int blud2e::makeDoomDoors(std::stringstream& refer)
             is_floor=true;
 
         addSprite(S,ps->log.x,chX, "SWITCH", refer);
-        addSprite(S,ps->log.x,it->key, "TC_LOCKER", refer);
+        if (it->triggerWPush)
+            addSprite(S,ps->log.x,it->key, "TC_LOCKER", refer);
         auto the_list=findAllSprites(it);
         for (auto i: the_list)
             if(spV.at(i).is("SectorSFX"))
@@ -767,10 +768,16 @@ int blud2e::makeSlideSector(std::stringstream& refer)
     {
         assert(sV.at(T).refer == T);
         std::vector<unionSector>::iterator it=sV.begin()+T;
-        if (sV.at(T).loops.size() ==1 && sV.at(T).generic->property("inner") )
+        if (sV.at(T).loops.size() ==1 )//&& sV.at(T).generic->property("inner") )
         {
             assert(it->marker0 > 0 && it->marker1 >0 );
             assert(spV.at(it->marker0).xvel ==it->marker0 && spV.at(it->marker1).xvel == it->marker1);
+            int slaveSector=-1;
+            if (sV.at(T).log.x > 0 && sV.at(T).log.x < getSectors())
+            {
+                refer << "was found slave Sector: " << sV.at(T).log.x << " for master Sector: " << T << std::endl;
+                slaveSector=sV.at(T).log.x;
+            }
 
             float dx=spV.at(it->marker0).pos.x -spV.at(it->marker1).pos.x;
             float dy=spV.at(it->marker0).pos.y -spV.at(it->marker1).pos.y;
@@ -809,11 +816,20 @@ int blud2e::makeSlideSector(std::stringstream& refer)
             addSprite(T, ch, angle, "SE64",refer);
             addSprite(T,ch,angle, "GPSPEED", refer);
             lastSprite.tag.x=sqrt(dx*dx+dy*dy); // lotag
-            addSprite(T,ch, 0, "TC_LOCKER", refer);
+            if (it->triggerWPush)
+                addSprite(T,ch, 0, "TC_LOCKER", refer);
+            if (it->waitTime > 0)
+                addSprite(T, ch, it->waitTime, "SE10",refer);
             it->tag.g=ch;
+            if (slaveSector >= 0)
+                sV.at(slaveSector).tag.g=ch;
             it->log=glm::ivec2(ch,0);
             it->done=true;
-        };
+        } //else if (sV.at(T).log.x > 0 && sV.at(T).log.x < getSectors())
+        //{
+        //    refer << "was found slave Sector: " << sV.at(T).log.x << " for master Sector: " << T << std::endl;
+       // }
+
     };
 
     check(refer);
@@ -821,6 +837,52 @@ int blud2e::makeSlideSector(std::stringstream& refer)
     refer << "was done: " << ret << " Slide Sectors" << std::endl;
 	return ret;
 };
+
+
+int blud2e::makeZMotionSrite(std::stringstream& refer)
+{
+    int last=get_done(sV);
+    std::set<int> the_list;
+    refer << std::endl << "Z Motion SPRITE sectors was found: ";
+    for(auto T:sV)
+        if(T.over && !T.done && T.is("Z Motion SPRITE") && T.txID>=100 && T.rxID >=100)
+    {
+        refer << T.getNum() << " ";
+        the_list.insert(T.getNum());
+    }; refer<<std::endl;
+
+    for (auto T: the_list)
+    {
+        bool done=false;
+        auto it=sV.begin()+T;
+        auto sprites=findAllSprites(it);
+        for(auto S: sprites)
+        {
+            auto sp=spV.begin()+S;
+            if (sp->over && sp->rxID == 0 && sp->txID >= 100)
+            {
+                addSprite(T, channel(sp->txID), 0, "PushTrigger", refer, sp->pos);
+                lastSprite.texture_id=6166;
+                lastSprite.cstat=0x8090;
+                lastSprite.vel.z=0;
+                lastSprite.ang=sp->ang;
+                lastSprite.owner=20;
+                lastSprite.pos=sp->pos;
+
+                done=true;
+            }
+        }
+        if (done)
+        {
+            addSprite(T, channel(it->rxID), channel(it->txID), "SWITCH", refer);
+            it->done=true;
+        }
+    }
+
+    int ret =get_done(sV)-last;
+    refer << "was done: " << ret << " Z Motion SPRITE Sectors" << std::endl;
+    return EXIT_SUCCESS;
+}
 
 int blud2e::makeController(std::stringstream& refer)
 {
@@ -832,6 +894,14 @@ int blud2e::makeController(std::stringstream& refer)
         refer << T.refer<< " ";
         the_list.insert(T.refer);
     }; refer<<std::endl;
+
+    std::set<int> switch_list;
+    for(auto& T:spV)
+        if(T.over && T.isType("1-Way switch") && T.texture_id == 6190 && T.rxID == 0 && T.txID >=100)
+    {
+        T.vel.y=T.txID;
+        T.done=true;
+    }
 
     refer << "set controller: ";
     for(auto T:the_list)
@@ -1271,7 +1341,7 @@ int blud2e::makeSlideDoors(std::stringstream& refer)
 	return ret;
 };
 
-int blud2e::makeSDSS(std::stringstream& refer)
+int blud2e::makeSDSS(std::stringstream& refer) // Slide Doors Sprite System(SDSS)
 {
 
     int last=get_done(sV);
@@ -1355,7 +1425,8 @@ int blud2e::makeSDSS(std::stringstream& refer)
                 lastSprite.tag.g=0;
 
             }
-            spV.at(p1).ang=spV.at(p0).ang;
+            spV.at(p1).ang=spV.at(p0).ang;            
+            //sV.at(T).over=false;
         }
 
     }
@@ -1365,6 +1436,356 @@ int blud2e::makeSDSS(std::stringstream& refer)
     int ret =get_done(sV)-last;
     refer << "was done: " << ret << " Slide Doors Sprite System" << std::endl;
     return ret;
+}
+
+
+int blud2e::prepareSlideSector(std::stringstream& refer)
+{
+    int doneSlide=0;
+    std::set<int> sector_list;
+    for(auto T: sV)
+        if(T.over && T.is("Slide"))
+            sector_list.insert(T.refer);
+
+    refer<< std::endl << "found Slide Sectors: ";
+    for(auto T: sector_list) refer<< T << " "; refer << std::endl;
+    int number=0;
+    for (auto& W: wV) W.setNum(number++);
+    for (int i=0; i < (int)sV.size(); i++)
+        for (int j=sV.at(i).wallptr; j<(sV.at(i).wallptr+sV.at(i).wallnum); j++)
+            wV.at(j).sector=i;
+
+
+    for(auto T: sector_list)
+    {
+        int count=0;
+        std::set<int> sectors;
+        auto first=sV.at(T).wallptr;
+        auto it=first;
+        do{
+            count++;
+            sectors.insert(wV.at(it).nextsector);
+            it=wV.at(it).point2;
+        } while (it != first);
+
+        if (count != sV.at(T).wallnum)
+        {
+             refer << "count: " << count << " wallnum: " << sV.at(T).wallnum <<std::endl;
+            continue;
+        }
+        if ( sectors.count(-1) == 0 )
+            continue;
+
+        refer << "slide sector: " << T <<std::endl;
+        sectors.erase(-1);
+        for (auto& K: sectors)
+        {
+            auto sec=sV.begin()+K;
+
+            int j=0;
+
+            for (int i=sec->wallptr; i<(sec->wallptr+sec->wallnum); i++)
+                if (wV.at(i).point2 < i)
+                    j++;
+
+            if (j == 1)
+                sectors.erase(K);
+        }
+
+        if ((int)sectors.size()  == 1 )
+        {
+            auto sec=sV.begin()+ *sectors.begin();
+
+            int marker0=sec->wallptr;
+            int marker1=marker0;
+            int mrk=marker0;
+            for (int i=sec->wallptr; i<(sec->wallptr+sec->wallnum); i++)
+            {
+                static bool flag=false;
+
+                if (wV.at(i).nextsector == T && mrk != sec->wallptr)
+                {
+                    marker0=mrk;
+                    flag=true;
+                }
+
+                if (wV.at(i).point2 < i)
+                {
+                    if (flag)
+                        marker1=i;
+
+                    flag=false;
+                    mrk=i+1;
+
+                }
+            }
+            refer<< " found loop sector: " <<*sectors.begin() << std::endl;
+            refer<< "marker0: " << marker0 << " marker1: " << marker1 <<  std::endl;
+
+            if (marker0 == sec->wallptr || marker1 == sec->wallptr)
+                continue;
+
+            if (wV.at(marker0).nextsector >= 0)
+                continue;
+
+            bool done=false;
+            int idx=marker0;
+            int countWall=0;
+            do
+            {
+                static bool generic=true;
+                if (wV.at(idx).nextsector == -1 && generic)
+                    countWall++;
+                else if (wV.at(idx).nextsector == -1 && !generic)
+                    countWall++;
+                else
+                {
+                    idx=wV.at(wV.at(idx).nextwall).point2;
+                    generic=false;
+                    if (wV.at(idx).nextsector < 0)
+                        countWall++;
+                    else
+                        done=true;
+                }
+
+                idx=wV.at(idx).point2;
+
+                if (wV.at(idx).x == wV.at(marker0).x && wV.at(idx).y == wV.at(marker0).y)
+                    done=true;
+
+                if (countWall > (int)wV.size()) // protect
+                {
+                    refer << "ERROR in prepare Slide Sector! Endlessly loop!";
+                    return EXIT_FAILURE;
+                }
+            } while(!done);
+            refer << "count of wall: " << countWall << std::endl;
+
+            ////////////////////////////////
+            done=false;
+            idx=marker0;
+            int WC=wV.size();
+            std::vector<unionWall> myWalls;
+            do
+            {
+                static int countWall=0;
+                static bool generic=true;
+                if (wV.at(idx).nextsector == -1 && generic)
+                {
+                    unionWall nw=wV.at(idx);
+                    nw.nextsector=nw.sector;
+                    nw.nextwall=nw.getNum();
+                    myWalls.push_back(nw);
+
+                    wV.at(idx).nextwall=WC+countWall;
+                    wV.at(idx).nextsector=getSectors();
+                    countWall--;
+                } else if (wV.at(idx).nextsector == -1 && !generic)
+                {
+                    unionWall nw=wV.at(idx);
+                    nw.nextsector=nw.sector;
+                    nw.nextwall=nw.getNum();
+                    myWalls.push_back(nw);
+
+                    wV.at(idx).nextsector=getSectors();
+                    wV.at(idx).nextwall=WC+countWall;
+                    countWall--;
+                } else
+                {
+                    idx=wV.at(wV.at(idx).nextwall).point2;
+                    generic=false;
+                    if (wV.at(idx).nextsector < 0)
+                    {
+                        unionWall nw=wV.at(idx);
+                        nw.nextsector=nw.sector;
+                        nw.nextwall=nw.getNum();
+                        myWalls.push_back(nw);
+
+                        wV.at(idx).nextsector=getSectors();
+                        countWall--;
+
+                    } else
+                        done=true;
+                }
+
+                idx=wV.at(idx).point2;
+
+                if (wV.at(idx).x == wV.at(marker0).x && wV.at(idx).y == wV.at(marker0).y)
+                    done=true;
+
+            } while(!done);
+
+            refer << "size of the new sector: " << myWalls.size() << std::endl;
+            unionSector ns=sV.at(T);
+            ns.wallptr=wV.size();
+            ns.wallnum=myWalls.size();
+            int h=sV.at(*sectors.begin()).ceilingz;
+            ns.floorz=h;
+            ns.over=false;
+            sV.push_back(ns);
+
+            int sizeWalls=wV.size();
+            std::reverse(myWalls.begin(), myWalls.end());
+
+            for (auto it=myWalls.begin(); it < myWalls.end(); it++)
+            {
+                wV.push_back(*it);
+            }
+            int x=wV.at(wV.size()-1).x;
+            int y=wV.at(wV.size()-1).y;
+            for (int i=sizeWalls; i < (int)wV.size(); i++)
+            {
+                if (i != ((int)wV.size()-1))
+                    wV.at(i).point2=i+1;
+                else
+                    wV.at(i).point2=sizeWalls;
+            }
+
+            for (int i=((int)wV.size()-1); i > sizeWalls; i--)
+            {
+                    wV.at(i).x=wV.at(i-1).x;
+                    wV.at(i).y=wV.at(i-1).y;
+            }
+
+            wV.at(sizeWalls).x=x;
+            wV.at(sizeWalls).y=y;
+
+            for (int i=sizeWalls; i < (int)wV.size(); i++)
+            {
+                wV.at(wV.at(i).nextwall).nextwall=i;
+                wV.at(wV.at(i).nextwall).nextsector=sV.size()-1;
+
+            }
+            doneSlide+=sectors.size();
+            //for(auto S: sectors) sV.at(S).log.x=getSectors()-1;
+            sV.at(T).log.x=getSectors()-1;
+        }
+    };
+
+
+    refer << "was preapare: " << doneSlide << " Slide Doors Sprite System\n" << std::endl;
+    return EXIT_SUCCESS;
+}
+
+int blud2e::makeStarTrackDoors(std::stringstream& refer)
+{
+    int last=get_done(sV);
+    std::set<int> the_list;
+    refer << std::endl << "Slide Marked sectors was found: ";
+    for(auto T:sV)
+        if(T.over && !T.done && T.is("Slide Marked") && T.log.x == 0)
+    {
+        refer << T.refer << " ";
+        the_list.insert(T.refer);
+    }; refer<<std::endl;
+
+    for (auto T: the_list)
+    {
+        int p0=sV.at(T).marker0;
+        int p1=sV.at(T).marker1;
+
+        if (spV.at(p0).owner != T  || spV.at(p1).owner != T || sV.at(T).wallnum < 6 )
+               continue;
+
+        int x0=spV.at(p0).x;
+        int y0=spV.at(p0).y;
+        int x1=spV.at(p1).x;
+        int y1=spV.at(p1).y;
+        int dx=x0-x1;
+        int dy=y0-y1;
+        for (int i=sV.at(T).wallptr; i < (sV.at(T).wallptr+sV.at(T).wallnum); i++)
+        {
+            auto it=wV.begin()+i;
+            int p2=wV.at(i).point2;
+            int xm=(wV.at(i).x+wV.at(p2).x)/2;
+            int ym=(wV.at(i).y+wV.at(p2).y)/2;
+
+            if (xm == spV.at(p1).x && ym == spV.at(p1).y)
+            {
+                refer << " found Star Track Door!" << " sector: "  << T << std::endl;
+                int i2=wV.at(i).point2;
+    /*			int i3=w.at(i2).point2;
+                int i0=get_prv_point(num,i);
+                int iabs=-1;
+                if (i0>=0)
+                    iabs=get_prv_point(num,i0);
+                if (w.at(i).x != w.at(iabs).x && w.at(i).y != w.at(iabs).y)
+                    return -1;
+
+                std::cout << "First door  found" << std::endl;
+    */
+                int x=wV.at(i).x + dx;
+                int y=wV.at(i).y + dy;
+
+                int x1=wV.at(i2).x;
+                int y1=wV.at(i2).y;
+
+                wV.at(i2).x += dx;
+                wV.at(i2).y += dy;
+    /*			w.at(i3).x +=dx;
+                w.at(i3).y +=dy;
+
+                if (i0 >= 0)
+                {
+                    w.at(i0).x +=dx;
+                    w.at(i0).y +=dy;
+                };
+    */
+    //			w.at(i).print();
+                //s.at(num).lotag=0;
+                division_wall_maplevel(i, x, y, true);
+                division_wall_maplevel(i+2, x1, y1, true);
+                //divisionWall(it0);
+                //wV.at(i2).x=x;
+                //wV.at(i2).y=y;
+
+            } else if ( xm == (spV.at(p0).x+dx) && ym == (spV.at(p0).y+dy))
+            {
+                int i2=wV.at(i).point2;
+    /*			int i3=w.at(i2).point2;
+                int i0=get_prv_point(num,i);
+                int iabs=-1;
+                if (i0>=0)
+                    iabs=get_prv_point(num,i0);
+                if (w.at(i).x != w.at(iabs).x && w.at(i).y != w.at(iabs).y)
+                    return -1;
+
+                std::cout << "Second door found" << std::endl;
+    */
+                int x1=wV.at(i).x;
+                int y1=wV.at(i).y;
+
+                wV.at(i).x -= dx;
+                wV.at(i).y -= dy;
+
+
+
+                int x=wV.at(i2).x -dx;
+                int y=wV.at(i2).y -dy;
+    /*			w.at(i3).x -=dx;
+                w.at(i3).y -=dy;
+
+                if (i0 >= 0)
+                {
+                    w.at(i0).x -=dx;
+                    w.at(i0).y +=dy;
+                };
+    */
+    //			w.at(i).print();
+                //s.at(num).lotag=0;
+                division_wall_maplevel(i, x, y, true);
+                division_wall_maplevel(i-1, x1, y1, true);
+                //divisionWall(i);
+                //w.at(i+1).x=x;
+                //w.at(i+1).y=y;
+
+            }
+        }
+    }
+
+    int ret =get_done(sV)-last;
+    refer << "was done: " << ret << " StarTrack Doors Sectors" << std::endl;
+    return EXIT_SUCCESS;
 }
 
 int blud2e::makeLighting(std::stringstream& refer)
@@ -1395,7 +1816,8 @@ int blud2e::makeLighting(std::stringstream& refer)
             refer << S << " ";
             int amp=0;
             if (sV.at(S).over)
-                amp=sV.at(S).amplitude;
+                //amp=sV.at(S).amplitude;
+                amp=sV.at(S).floorshade+sV.at(S).amplitude;
             addSprite(S, ch, amp, "TC_LIGHTING", refer);
             if(sV.at(S).over && sV.at(S).wave > 5)
                 lastSprite.vel.z=1;
@@ -1459,7 +1881,8 @@ int blud2e::makeLighting(std::stringstream& refer)
                 if(sV.at(Z).over && sV.at(Z).amplitude != 0)
                 {
                     refer << Z << " ";
-                    addSprite(Z, ch1, sV.at(Z).amplitude , "TC_LIGHTING", refer);
+                    int amp=sV.at(Z).floorshade+sV.at(Z).amplitude;
+                    addSprite(Z, ch1, amp , "TC_LIGHTING", refer);
                     lastSprite.tag.g=1;
                 }
             }
@@ -1488,17 +1911,29 @@ int blud2e::makeLighting(std::stringstream& refer)
     int j=0;
     for(auto& T: sV) if (T.over && T.amplitude != 0)
     {
-        addSprite(T.getNum(), 0, T.amplitude, "TC_LIGHTING", refer);
-        lastSprite.tag.g=1;        
-        if ( T.wave > 5)
+        auto sector=sV.begin()+T.getNum();
+        auto sprites=findAllSprites(sector);
+        bool torch=false;
+        for(auto S:sprites) if (spV.at(S).is("Torch"))
         {
-            lastSprite.vel.z=4;
-            //lastSprite.owner=1;
-            int ch=channel();
-            lastSprite.tag.r=ch;
-            T.tag.g=ch;
+            torch =true;
+            break;
         }
-        j++;
+        if (!torch)
+        {
+            int amp=T.floorshade+T.amplitude;
+            addSprite(T.getNum(), 0, amp, "TC_LIGHTING", refer);
+            lastSprite.tag.g=1;
+            if ( T.wave > 5)
+            {
+                lastSprite.vel.z=4;
+                //lastSprite.owner=1;
+                int ch=channel();
+                lastSprite.tag.r=ch;
+                T.tag.g=ch;
+            }
+            j++;
+        }
 
     }
     refer << std::endl << "add " << j << " static light.";
@@ -2026,8 +2461,8 @@ int blud2e::slideROR(std::stringstream& refer)
             T.x -=dx;
             T.y -=dy;
         }
-    }
 
+    }
     wall_subdivision_ror(65, 90, refer);
     return EXIT_SUCCESS;
 }
@@ -2255,10 +2690,13 @@ int blud2e::makeQuotes(std::stringstream& msg)
 
 int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
     scale=scope;
-
+    prepareSlideSector(msg);
     slideROR(msg);
 
     makeSlideDoors(msg);
+    //makeStarTrackDoors(msg);
+
+
     if (prepare(msg) == EXIT_FAILURE)
     {
         msg << "ERROR: missing files: sounds.con or sounds_old.con or defs.con or pic_table.con" << std::endl;
@@ -2280,7 +2718,7 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
         else if(T.isType("BloodDrip Gen"))
             T.makeBloodDripGen();
         else if(T.isType("Toggle switch") || T.isType("1-Way switch"))
-            T.tag.r=RS.trans(T.data1);
+            T.tag.g=RS.trans(T.data1);
         else if(items.count(T.lotag) && T.launchS) // mulipalyer
             T.pal=1;
         else if(items.count(T.lotag) && T.launchT && T.launchB)
@@ -2322,7 +2760,7 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
     makeEnterSensor(msg);
     makeRotateSector(msg);
     makeSDSS(msg);
-
+    makeZMotionSrite(msg);
 
     makeController(msg);
     makeQuotes(msg);

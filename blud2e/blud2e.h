@@ -351,6 +351,7 @@ class  unionWall : public Wall, public xWall {
         glm::ivec2 res;
         int texture_id;
         int outside_texture_id;
+        int sector;
         std::vector<unionWall>::iterator nextPoint;
         std::vector<unionWall>::iterator prePoint;
         std::vector<unionWall>::iterator nextWall;
@@ -365,7 +366,6 @@ class  unionWall : public Wall, public xWall {
     private:
         int num;
 };
-
 
 struct LOOP {
     std::vector<unionWall>::iterator marker;
@@ -443,7 +443,8 @@ class  unionSector : public Sector, public xSector {
         glm::vec3 getCenter();
         glm::vec2 getNNS(glm::vec2 pt, std::stringstream&);
     private:
-        std::map<std::string, int> to_num={{"MotionZ", 600},{"Slide", 616}, {"Rotate", 617}, {"Slide Marked", 614}};
+        std::map<std::string, int> to_num={{"MotionZ", 600},{"Slide", 616}, {"Rotate", 617}, {"Slide Marked", 614},
+                                          {"Z Motion SPRITE", 602}};
         int num;
 };
 
@@ -558,6 +559,9 @@ private:
     int get_wall_maplevel(int, int, int, std::stringstream&);
     int division_wall_maplevel(int, int, int, bool);
     int wall_subdivision_ror(int, int, std::stringstream&);
+    int prepareSlideSector(std::stringstream& refer);
+    int makeZMotionSrite(std::stringstream& refer);
+    int makeStarTrackDoors(std::stringstream&);
 public:
     int read(char *filename, std::stringstream&);
     int read_text_file_to_string(const char*, std::string&, std::stringstream&);
