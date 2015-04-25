@@ -420,6 +420,7 @@ class  unionSector : public Sector, public xSector {
         glm::ivec3 tag;
         glm::ivec2 log;
         glm::ivec2 dxdy;
+        glm::ivec2 res;
         std::vector<unionSector>::iterator originNumber;
         std::vector<unionWall>::iterator firstWall;
         std::vector<LOOP> loops;
@@ -443,8 +444,8 @@ class  unionSector : public Sector, public xSector {
         glm::vec3 getCenter();
         glm::vec2 getNNS(glm::vec2 pt, std::stringstream&);
     private:
-        std::map<std::string, int> to_num={{"MotionZ", 600},{"Slide", 616}, {"Rotate", 617}, {"Slide Marked", 614},
-                                          {"Z Motion SPRITE", 602}};
+        std::map<std::string, int> to_num={{"Normal", 0}, {"MotionZ", 600},{"Slide", 616}, {"Rotate", 617},
+                                           {"Slide Marked", 614}, {"Z Motion SPRITE", 602}};
         int num;
 };
 
@@ -456,12 +457,12 @@ class  unionSprite : public Sprite, public xSprite {
         std::map<std::string, int> to_type={{"Ambient SFX", 710},{"BloodDrip Gen", 702}, {"WaterDrip Gen", 701},
         {"Player Start", 1}, {"Hidden Exploder", 459}, {"Toggle switch", 20}, {"1-Way switch", 21},
         {"Sector SFX", 709}, {"Player SFX", 711}, {"SFX Gen", 708}, {"Explode Object", 417}, {"Gib Object", 416},
-        {"Dude Spawn", 18}, {"Wall Crack", 408}, {"Upper stack",11}, {"Lower stack", 12}};
+        {"Dude Spawn", 18}, {"Wall Crack", 408}, {"Upper stack",11}, {"Lower stack", 12}, {"Decoration", 0}};
     public:
         void print(std::stringstream&);
         bool over=false;
         bool done=false;
-                glm::vec4 pos;
+         glm::vec4 pos;
         glm::ivec3 tag;
         glm::ivec3 vel;
         glm::ivec2 log;
@@ -562,6 +563,7 @@ private:
     int prepareSlideSector(std::stringstream& refer);
     int makeZMotionSrite(std::stringstream& refer);
     int makeStarTrackDoors(std::stringstream&);
+    int makePlayerSFX(std::stringstream&);
 public:
     int read(char *filename, std::stringstream&);
     int read_text_file_to_string(const char*, std::string&, std::stringstream&);

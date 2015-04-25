@@ -448,6 +448,7 @@ int blud2e::addSprite(int room,  int rxChannel, int txChannel ,std::string name,
     nsp.owner=-1;
     nsp.xrepeat=nsp.yrepeat=64;
     nsp.setNum(getSprites());
+    //nsp.sectnum=room;
 
     if ( name == "SE13")
     {
@@ -516,7 +517,7 @@ int blud2e::addSprite(int room,  int rxChannel, int txChannel ,std::string name,
     } else if (name == "PushTrigger")
     {
         nsp.texture_id=18;
-        nsp.vel.z=nsp.owner=1;
+        nsp.vel.z=1;
         nsp.vel.y=rxChannel;
         spV.push_back(nsp);
     } else if (name == "Wall Crack")
@@ -591,6 +592,7 @@ int blud2e::makeExplosiveSector(std::stringstream& refer) {
                 spV.at(spr).texture_id=916;
                 spV.at(spr).cstat &=~(1<<7);
                 addSprite(T,ch, 0, "Wall Crack", refer, spV.at(spr).pos);
+                lastSprite.cstat=0x8090; // invisible
             };
         sV.at(T).done=true;
     };
@@ -677,6 +679,16 @@ int blud2e::makeDoomDoors(std::stringstream& refer)
         if (it->onFloorZ != it->offFloorZ)
             is_floor=true;
 
+        int range, speed;
+        if (is_floor)
+            range=abs(it->onFloorZ-it->offFloorZ);
+        else
+            range=abs(it->onCeilZ-it->offCeilZ);
+        if (ps->busyTime > 0)
+            speed=(rint)(range/(float)(ps->busyTime * 2.6f));
+        else
+            speed=512;
+
         addSprite(S,ps->log.x,chX, "SWITCH", refer);
         if (it->triggerWPush)
             addSprite(S,ps->log.x,it->key, "TC_LOCKER", refer);
@@ -696,7 +708,7 @@ int blud2e::makeDoomDoors(std::stringstream& refer)
         if (it->busy > 0)
             addSprite(S,chX,ps->busyTime, "MovePoint", refer);
         else
-            addSprite(S,chX,512, "MovePoint",refer);
+            addSprite(S,chX,speed, "MovePoint",refer);
 
         if (it->waitTime > 0)
             addSprite(S, chX, ps->waitTime, "SE10",refer);
@@ -742,6 +754,8 @@ int blud2e::makeEnterSensor(std::stringstream& refer)
         };
         if (targets.size()>0) refer << std::endl;
         addSprite(T, ch, 0, "PushTrigger",refer);
+        if (sV.at(T).triggerOnce)
+            lastSprite.owner=1;
 
 
         sV.at(T).done=true;
@@ -773,6 +787,12 @@ int blud2e::makeSlideSector(std::stringstream& refer)
             assert(it->marker0 > 0 && it->marker1 >0 );
             assert(spV.at(it->marker0).xvel ==it->marker0 && spV.at(it->marker1).xvel == it->marker1);
             int slaveSector=-1;
+            float range=glm::distance(glm::ivec2(spV.at(it->marker0).pos.x, spV.at(it->marker0).pos.y),
+                                      glm::ivec2(spV.at(it->marker1).pos.x, spV.at(it->marker1).pos.y));
+            int speed=0;
+            if (it->busyTime > 0)
+                speed=(rint)(range/(float)(it->busyTime*2.6f));
+
             if (sV.at(T).log.x > 0 && sV.at(T).log.x < getSectors())
             {
                 refer << "was found slave Sector: " << sV.at(T).log.x << " for master Sector: " << T << std::endl;
@@ -816,6 +836,7 @@ int blud2e::makeSlideSector(std::stringstream& refer)
             addSprite(T, ch, angle, "SE64",refer);
             addSprite(T,ch,angle, "GPSPEED", refer);
             lastSprite.tag.x=sqrt(dx*dx+dy*dy); // lotag
+            lastSprite.tag.y=speed;
             if (it->triggerWPush)
                 addSprite(T,ch, 0, "TC_LOCKER", refer);
             if (it->waitTime > 0)
@@ -856,26 +877,53 @@ int blud2e::makeZMotionSrite(std::stringstream& refer)
         bool done=false;
         auto it=sV.begin()+T;
         auto sprites=findAllSprites(it);
+        int ch=0;
         for(auto S: sprites)
         {
             auto sp=spV.begin()+S;
-            if (sp->over && sp->rxID == 0 && sp->txID >= 100)
+            if (sp->over && sp->rxID == 0 && sp->txID >= 100 && sp->txID==it->rxID)
             {
-                addSprite(T, channel(sp->txID), 0, "PushTrigger", refer, sp->pos);
+                ch=channel(sp->txID);
+                int owner=channel();
+                sp->owner=owner;
+                sp->statnum=15;
+                addSprite(T, ch, 0, "PushTrigger", refer, sp->pos);
                 lastSprite.texture_id=6166;
                 lastSprite.cstat=0x8090;
                 lastSprite.vel.z=0;
                 lastSprite.ang=sp->ang;
-                lastSprite.owner=20;
+                lastSprite.owner=owner;
                 lastSprite.pos=sp->pos;
+
+                addSprite(T, it->txID, it->txID, "MovePoint", refer);
+                lastSprite.owner=owner;
+                lastSprite.tag=glm::ivec3(20,1,-1);
+                glm::vec4 pt=lastSprite.pos;
+
+                addSprite(T, it->txID, it->txID, "MovePoint", refer, sp->pos);
+                lastSprite.owner=owner;
+                lastSprite.texture_id=15;   // MOVER
+                lastSprite.tag.x=lastSprite.tag.y=0;
+                lastSprite.pos=pt;
+                lastSprite.pos.z=lastSprite.pos.z-1024;
 
                 done=true;
             }
+
         }
+
         if (done)
         {
             addSprite(T, channel(it->rxID), channel(it->txID), "SWITCH", refer);
-            it->done=true;
+            for(auto S: sprites)
+            {
+                auto sp=spV.begin()+S;
+                if (sp->is("SectorSFX"))
+                {
+                    sp->texture_id=19;
+                    sp->vel.x=it->txID;
+                }
+            }
         }
     }
 
@@ -886,6 +934,14 @@ int blud2e::makeZMotionSrite(std::stringstream& refer)
 
 int blud2e::makeController(std::stringstream& refer)
 {
+    std::set<int> switch_list;
+    for(auto& T:spV)
+        if(T.over && T.isType("1-Way switch") && T.texture_id == 6190 && T.rxID == 0 && T.txID >=100)
+    {
+        T.vel.y=T.txID;
+        T.done=true;
+    }
+
     int last=get_done(spV);
     std::set<int> the_list;
     refer << std::endl << "Controles was found: ";
@@ -895,13 +951,7 @@ int blud2e::makeController(std::stringstream& refer)
         the_list.insert(T.refer);
     }; refer<<std::endl;
 
-    std::set<int> switch_list;
-    for(auto& T:spV)
-        if(T.over && T.isType("1-Way switch") && T.texture_id == 6190 && T.rxID == 0 && T.txID >=100)
-    {
-        T.vel.y=T.txID;
-        T.done=true;
-    }
+
 
     refer << "set controller: ";
     for(auto T:the_list)
@@ -918,19 +968,47 @@ int blud2e::makeController(std::stringstream& refer)
             for(auto i: sensors_list)
             {
                 auto sprites=findAllSprites(sV.begin()+i);
-                auto isTrigger=sV.end();
-                for(auto k:sprites)
-                    if (spV.at(k).texture_id == 18)
-                        isTrigger=spV.at(k).inSector;
-                if (isTrigger !=sV.end())
+
+                auto iter=sprites.begin();
+                while (iter != sprites.end())
+                    if (spV.at(*iter).texture_id != 18)
+                        sprites.erase(iter);
+                    else
+                        ++iter;
+
+                for(auto k: sprites)
                 {
+                    int chx=channel();
                     int level=0; if (!it->launch1) level +=1;
                     if (!it->launch2) level +=2; if (!it->launch3) level +=4;
                     if (!it->launch4) level +=8; if (!it->launch5) level +=16;
-                    addSprite((isTrigger-sV.begin()), isTrigger->log.y, level , "SE60", refer);
-                    refer << std::endl << "add sprite SE60 in: " << isTrigger -sV.begin() << " launch level: " <<level;
+                    addSprite((spV.at(k).inSector-sV.begin()), chx, level , "SE60", refer);
+                    spV.at(k).vel.x=chx;
+                    refer << std::endl << "add sprite SE60 in: " << (spV.at(k).inSector-sV.begin()) << " launch level: " <<level;
                 };
-            }
+           }
+        }
+    }
+
+    for(auto T:the_list)
+    {
+        auto it=spV.begin()+T;
+        auto sensors_list=findDoneTx(sV, it->rxID);
+        auto activators_list=findDoneRx(spV, it->txID);
+        if (sensors_list.size() > 0 && activators_list.size() >0 )
+        {
+            refer<< SE<< "sector: " << it->inSector->getNum()<< " sensors: ";
+            for(auto S: sensors_list)
+                refer << S << " type: "<<  sV.at(S).lotag << " ";
+            refer << SE;
+            refer << "activators: ";
+            for(auto A: activators_list)
+                refer << A << " type: " << spV.at(A).lotag << " ";
+            refer << SE;
+
+            it->texture_id=9117;  // mark for remove the sprite
+            addSprite((it->inSector->getNum()), it->rxID, it->txID, "SWITCH", refer, it->pos);
+            it->done=true;
         }
 
 
@@ -940,6 +1018,7 @@ int blud2e::makeController(std::stringstream& refer)
     refer << std:: endl << "was done: " << ret << " Controllers" << std::endl;
     return ret;
 };
+
 int blud2e::makeTROR(std::stringstream& refer)
 {
     std::vector<auxTROR> aux;
@@ -1054,9 +1133,9 @@ int blud2e::makeRotateSector(std::stringstream& refer)
             auto mrk=spV.begin()+it->marker0;
             assert(mrk->owner == T);
             int ch=channel(it->rxID);
-            int chX=channel();
+            int chx=channel();
             int key=getKey(it);
-            it->log=glm::ivec2(ch,chX);
+            it->log=glm::ivec2(ch,chx);
 
             auto pair_list=findTx(sV, it->rxID, -1, -1, true);
             for (auto iter=pair_list.begin(); iter != pair_list.end();)
@@ -1075,7 +1154,7 @@ int blud2e::makeRotateSector(std::stringstream& refer)
             };
 
             mrk->tag=glm::ivec3(64,ch, -1);
-            mrk->vel=glm::ivec3(ch,0, 1);
+            mrk->vel=glm::ivec3(chx,0, 1);
             mrk->owner=-1;
             mrk->texture_id=1;
             if (!it->state)
@@ -1108,18 +1187,27 @@ int blud2e::makeRotateSector(std::stringstream& refer)
             auto the_list=findAllSprites(it);
             for(auto S: the_list) {
                 auto iter=spV.begin()+S;
-                if (iter->over && iter->is("SectorSFX")) {
+                if (iter->is("SectorSFX")) {
                     iter->texture_id=5;
-                    iter->vel.x=ch;
+                    iter->vel.x=ps->log.y;
             };};
             addSprite(T,ps->log.x, key, "TC_LOCKER", refer);
-            addSprite(T,ch,1, "MovePoint", refer);
+
+            addSprite(T,chx,1, "MovePoint", refer);
             lastSprite.ang=0;
-            lastSprite.tag.x=32;
+            if (ps->busyTime > 0)
+                lastSprite.tag.x=(rint)(512.f/(2.6f*(float)ps->busyTime));
+            else
+                lastSprite.tag.x=32;
             if (mrk->ang >0) lastSprite.vel.z=1;
-            addSprite(T,ps->log.x,ch, "SWITCH", refer);
+
+            if (ch == ps->log.x)
+                addSprite(T,ch,chx, "SWITCH", refer);
+            else
+                addSprite(T,ps->log.y,chx, "SWITCH", refer);
             it->tag.g=ch;
             it->done=true;
+
         };
     };
     check(refer);
@@ -1331,6 +1419,32 @@ int blud2e::makeSlideDoors(std::stringstream& refer)
 
             };
         }
+        auto itT=sV.begin()+T;
+        auto sprites=findTx(spV, sV.at(T).rxID, -1, 0, true);
+        auto iter=sprites.begin();
+        while (iter != sprites.end())
+            if (spV.at(*iter).sectnum != T )
+                sprites.erase(iter);
+            else
+                ++iter;
+
+        if ((int)sprites.size() == 2)
+        {
+            auto  mrk0=spV.begin()+sprites.at(0);
+            auto  mrk1=spV.begin()+sprites.at(1);
+            if (mrk1 == (mrk0+1))
+            {
+                mrk0->x -=dx;
+                mrk0->y -=dy;
+                mrk1->x +=dx;
+                mrk1->y +=dy;
+                sV.at(T).dxdy=glm::ivec2(dx,dy);
+                sV.at(T).res=glm::ivec2(sprites.at(0),sprites.at(1));
+            }
+
+        }
+
+
     };
     refer << "was removed " << j << " walls\n";
     refer << std::endl;
@@ -1369,6 +1483,13 @@ int blud2e::makeSDSS(std::stringstream& refer) // Slide Doors Sprite System(SDSS
             int dx=sV.at(T).dxdy.x;
             int dy=sV.at(T).dxdy.y;
 
+            auto it=sV.begin()+T;
+            float range=glm::distance(glm::ivec2(spV.at(it->marker0).pos.x, spV.at(it->marker0).pos.y),
+                                      glm::ivec2(spV.at(it->marker1).pos.x, spV.at(it->marker1).pos.y));
+            int speed=0;
+            if (it->busyTime > 0)
+                speed=(rint)(range/(float)(it->busyTime*2.6f));
+
             if (key == 0)
             {
                 for_loop(sV.at(d0).firstWall, [&] (unionWall _w)
@@ -1406,7 +1527,7 @@ int blud2e::makeSDSS(std::stringstream& refer) // Slide Doors Sprite System(SDSS
             spV.at(p1).vel.y=sV.at(d0).tag.g=chx;
             addSprite(d0, chx, 0,"GPSPEED", refer);
             lastSprite.tag.r=sqrt(dx*dx+dy*dy)*scale-32;
-            lastSprite.tag.g=0;
+            lastSprite.tag.g=speed;
 
             if (d1 > 0 && d1 < getSectors())
             {
@@ -1422,11 +1543,76 @@ int blud2e::makeSDSS(std::stringstream& refer) // Slide Doors Sprite System(SDSS
                 lastSprite.tag.r=key;
                 addSprite(d1, chX, 0,"GPSPEED", refer);
                 lastSprite.tag.r=sqrt(dx*dx+dy*dy)*scale-32;
-                lastSprite.tag.g=0;
+                lastSprite.tag.g=speed;
 
             }
             spV.at(p1).ang=spV.at(p0).ang;            
             //sV.at(T).over=false;
+        } else if (sV.at(T).res.x > 0 && sV.at(T).res.y > 0 ) // for two doors
+        {
+            refer << T << " ";
+            int ch=channel(sV.at(T).rxID);
+            int chx=channel();
+            int chx2=channel();
+            int owner=channel();
+            int key=sV.at(T).key;
+
+            auto sprites=findAllSprites((sV.begin()+T));
+            int p0=sV.at(T).marker0;
+            int p1=sV.at(T).marker1;
+            int m0=sV.at(T).res.x;
+            int m1=sV.at(T).res.y;
+            int dx=sV.at(T).dxdy.x;
+            int dy=sV.at(T).dxdy.y;
+
+            addSprite(T, chx, chx, "MovePoint", refer,spV.at(m0).pos);
+            lastSprite.owner=owner;
+            lastSprite.texture_id=15;
+            lastSprite.tag=glm::ivec3(0,0,-1);
+            lastSprite.ang=0;
+            spV.at(m0).owner=owner;
+            addSprite(T, chx, chx, "MovePoint", refer,spV.at(p0).pos);
+            lastSprite.pos.x +=dx;
+            lastSprite.pos.y +=dy;
+            lastSprite.ang=0;
+            lastSprite.tag=glm::ivec3(50, 1, -1);
+
+            addSprite(T, 0, ch, "SWITCH", refer,spV.at(m0).pos);
+            lastSprite.owner=owner;
+            lastSprite.cstat=0x8090;
+            lastSprite.vel.z=0;
+            lastSprite.pos.z=spV.at(m0).pos.z;
+            lastSprite.yrepeat=spV.at(m0).yrepeat*(spV.at(m0).res.y/lastSprite.res.y);
+            lastSprite.xrepeat=spV.at(m0).xrepeat*(spV.at(m0).res.x/lastSprite.res.x);
+            //lastSprite.tag=glm::ivec3(0,0,-1);
+            lastSprite.ang=(1024+spV.at(m0).ang)%2048;
+
+            addSprite(T, ch, chx, "SWITCH", refer);
+            addSprite(T, chx, chx2, "SWITCH", refer);
+
+
+            owner=channel();
+            //int chx2=channel();
+            addSprite(T, chx2, chx2, "MovePoint", refer,spV.at(m1).pos);
+            lastSprite.owner=owner;
+            lastSprite.texture_id=15;
+            lastSprite.tag=glm::ivec3(0,0,-1);
+            lastSprite.ang=0;
+            spV.at(m1).owner=owner;
+            addSprite(T, chx2, chx2, "MovePoint", refer,spV.at(p0).pos);
+            lastSprite.pos.x -=dx;
+            lastSprite.pos.y -=dy;
+            lastSprite.ang=0;
+            lastSprite.tag=glm::ivec3(50, 1, -1);
+
+            addSprite(T, 0, ch, "SWITCH", refer,spV.at(m1).pos);
+            lastSprite.owner=owner;
+            lastSprite.cstat=0x8090;
+            lastSprite.vel.z=0;
+            lastSprite.pos.z=spV.at(m0).pos.z;
+            lastSprite.yrepeat=spV.at(m0).yrepeat*(spV.at(m0).res.y/lastSprite.res.y);
+            lastSprite.xrepeat=spV.at(m0).xrepeat*(spV.at(m0).res.x/lastSprite.res.x);
+            lastSprite.ang=(1024+spV.at(m1).ang)%2048;
         }
 
     }
@@ -1681,6 +1867,7 @@ int blud2e::makeStarTrackDoors(std::stringstream& refer)
 
     for (auto T: the_list)
     {
+        auto itT=sV.begin()+T;
         int p0=sV.at(T).marker0;
         int p1=sV.at(T).marker1;
 
@@ -1693,6 +1880,21 @@ int blud2e::makeStarTrackDoors(std::stringstream& refer)
         int y1=spV.at(p1).y;
         int dx=x0-x1;
         int dy=y0-y1;
+
+        auto sprites=findRx(spV, itT->txID);
+        /*
+        auto iter=sprites.begin();
+        while (iter != sprites.end())
+            if (spV.at(*iter).rxID != itT->txID )
+                sprites.erase(iter);
+            else
+                ++iter;
+        */
+        if ((int)sprites.size() > 0)
+        {
+            refer << SE<< "was found SSD" << T << SE;
+        }
+
         for (int i=sV.at(T).wallptr; i < (sV.at(T).wallptr+sV.at(T).wallnum); i++)
         {
             auto it=wV.begin()+i;
@@ -1733,8 +1935,8 @@ int blud2e::makeStarTrackDoors(std::stringstream& refer)
     */
     //			w.at(i).print();
                 //s.at(num).lotag=0;
-                division_wall_maplevel(i, x, y, true);
-                division_wall_maplevel(i+2, x1, y1, true);
+                //division_wall_maplevel(i, x, y, true);
+                //division_wall_maplevel(i+2, x1, y1, true);
                 //divisionWall(it0);
                 //wV.at(i2).x=x;
                 //wV.at(i2).y=y;
@@ -1773,8 +1975,8 @@ int blud2e::makeStarTrackDoors(std::stringstream& refer)
     */
     //			w.at(i).print();
                 //s.at(num).lotag=0;
-                division_wall_maplevel(i, x, y, true);
-                division_wall_maplevel(i-1, x1, y1, true);
+                //division_wall_maplevel(i, x, y, true);
+                //division_wall_maplevel(i-1, x1, y1, true);
                 //divisionWall(i);
                 //w.at(i+1).x=x;
                 //w.at(i+1).y=y;
@@ -1787,6 +1989,9 @@ int blud2e::makeStarTrackDoors(std::stringstream& refer)
     refer << "was done: " << ret << " StarTrack Doors Sectors" << std::endl;
     return EXIT_SUCCESS;
 }
+
+
+
 
 int blud2e::makeLighting(std::stringstream& refer)
 {
@@ -2031,13 +2236,33 @@ void blud2e::makeSectorSFX(unionSprite& Sp)
 {
     Sp.tag=glm::ivec3(RS.trans(Sp.data1), RS.trans(Sp.data2), -1);
     Sp.shade=Sp.pal=0;
+
+
     if (Sp.isType("SFX Gen"))  // make TriggerSound
     {
         Sp.texture_id=19;
-        Sp.vel.z=1;
-        Sp.tag=glm::ivec3(RS.trans(Sp.data2), RS.trans(Sp.data1), -1);
-    };
+        if (Sp.rxID >=100)
+        {
+            Sp.vel=glm::ivec3(channel(Sp.rxID), Sp.txID, 0);
+        } else
+            Sp.vel.z=1;
 
+        Sp.done=true;
+        Sp.tag=glm::ivec3(RS.trans(Sp.data2), RS.trans(Sp.data1), -1);
+    } else if (Sp.isType("Sector SFX"))
+    {
+        if (!Sp.inSector->over || Sp.inSector->is("Normal"))
+        {
+            Sp.texture_id=19;
+            if (Sp.rxID >=100)
+            {
+                Sp.vel=glm::ivec3(channel(Sp.rxID), channel(Sp.txID), 0);
+            } else
+                Sp.vel.z=1;
+            Sp.done=true;
+
+        }
+    }
     if ((Sp.data3 > 0 && Sp.data4 > 0) && (Sp.data2 != Sp.data4 || Sp.data1 != Sp.data3))
     {
         unionSprite nsp = Sp;
@@ -2048,7 +2273,52 @@ void blud2e::makeSectorSFX(unionSprite& Sp)
         nsp.setNum(getSprites());
         spV.push_back(nsp);
     };
+
+    if (Sp.isType("SFX Gen") && Sp.tag.r == 957)  // !!!!! fix initial sound for E1M1
+        Sp.tag.r=1010;
+
+
+
 };
+
+int blud2e::makePlayerSFX(std::stringstream& refer)
+{
+    int count=0;
+    for(auto& S: spV)
+    {
+        if ( S.over && S.isType("Decoration") && S.txID >= 100 & S.rxID >=100)
+        {
+            auto sensors=findTx(spV, S.rxID);
+            auto activators=findRx(spV, S.txID);
+            if ((int)sensors.size() > 0 && (int)activators.size() > 0)
+            {
+                bool done=false;
+                for(auto A: activators)
+                {
+                    if (spV.at(A).isType("Player SFX"))
+                    {
+                        done=true;
+                        spV.at(A).texture_id=19;
+                        spV.at(A).vel=glm::ivec3(spV.at(A).rxID, spV.at(A).txID, 0);
+                    }
+
+                }
+                if (done)
+                {
+                    refer << "was found Player SFX: " << S.getNum() << SE;
+                    S.vel.y=S.txID;
+                    count++;
+                }
+            }
+
+
+        }
+
+    }
+
+    refer << "make Player SFX: " << count << std::endl;
+    return EXIT_SUCCESS;
+}
 
 void blud2e::makeRespawn(std::stringstream& msg)
 {
@@ -2694,6 +2964,7 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
     slideROR(msg);
 
     makeSlideDoors(msg);
+
     //makeStarTrackDoors(msg);
 
 
@@ -2712,7 +2983,7 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
         else if (T.is("FootTraces"))
             T.makeFootTraces();
         if (T.isType("Ambient SFX"))
-           T.makeAmbient(RS.trans(T.data3), T.data2*16);
+           T.makeAmbient(RS.trans(T.data3), T.data2*12);
         else if(T.isType("WaterDrip Gen"))
            T.makeWaterDripGen();
         else if(T.isType("BloodDrip Gen"))
@@ -2762,6 +3033,7 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
     makeSDSS(msg);
     makeZMotionSrite(msg);
 
+    makePlayerSFX(msg);
     makeController(msg);
     makeQuotes(msg);
 
@@ -2776,6 +3048,28 @@ int blud2e::processing(std::stringstream& msg, const float scope=1.f) {
             dh.sector=(short)(T.inSector-sV.begin());
             msg << "Start position: " << "X: " << dh.X << " Y: " << dh.Y << " Z: " << dh.Z
                 << " Sector: " << dh.sector<< std::endl;
+            auto the_list=findRx(spV, 7, -1, -1, true);
+            if ((int)the_list.size() > 0)
+            {
+                bool flag=false;
+                for(auto S: the_list )
+                {
+                    if (spV.at(S).txID >= 100 && spV.at(S).rxID == 7)
+                    {
+                        addSprite((spV.at(S).inSector-sV.begin()), 7, spV.at(S).txID, "SWITCH", msg, spV.at(S).pos);
+                        spV.at(S).texture_id=9117; // for remove
+                        spV.at(S).lotag=0; // throw out from the post-processing
+                        flag=true;
+                    }
+                }
+
+                if (flag)
+                {
+                    addSprite(dh.sector, 0, 0, "PushTrigger", msg);
+                    lastSprite.owner=1;
+                    lastSprite.vel.y=7;
+                };
+            }
         }
     }
 
