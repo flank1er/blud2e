@@ -349,6 +349,7 @@ class  unionWall : public Wall, public xWall {
         glm::ivec3 tag; // lotag+hitag+extra_tag
         glm::ivec2 log;
         glm::ivec2 res;
+
         int texture_id;
         int outside_texture_id;
         int sector;
@@ -421,6 +422,8 @@ class  unionSector : public Sector, public xSector {
         glm::ivec2 log;
         glm::ivec2 dxdy;
         glm::ivec2 res;
+        glm::ivec2 st_num;
+        bool startrack=false;
         std::vector<unionSector>::iterator originNumber;
         std::vector<unionWall>::iterator firstWall;
         std::vector<LOOP> loops;
@@ -445,7 +448,7 @@ class  unionSector : public Sector, public xSector {
         glm::vec2 getNNS(glm::vec2 pt, std::stringstream&);
     private:
         std::map<std::string, int> to_num={{"Normal", 0}, {"MotionZ", 600},{"Slide", 616}, {"Rotate", 617},
-                                           {"Slide Marked", 614}, {"Z Motion SPRITE", 602}};
+                                           {"Slide Marked", 614}, {"Z Motion SPRITE", 602}, {"Step Rotate", 613}};
         int num;
 };
 
@@ -564,6 +567,7 @@ private:
     int makeZMotionSrite(std::stringstream& refer);
     int makeStarTrackDoors(std::stringstream&);
     int makePlayerSFX(std::stringstream&);
+    int makeStepRotate(std::stringstream&);
 public:
     int read(char *filename, std::stringstream&);
     int read_text_file_to_string(const char*, std::string&, std::stringstream&);
