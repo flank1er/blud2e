@@ -24,6 +24,15 @@
 #define SE std::endl
 #define lastSprite spV.at(spV.size()-1)
 
+const int E1M1=0x11;
+const int E1M3=0x13;
+const int E1M4=0x14;
+const int E1M5=0x15;
+const int E1M6=0x16;
+const int E1M8=0x18;
+const int E2M3=0x23;
+const int E2M5=0x25;
+
 struct WL {
     int num;
     glm::ivec2 pt;
@@ -431,6 +440,8 @@ class  unionSector : public Sector, public xSector {
         bool is(std::string title) { if ( over && to_num[title] == lotag) return true; return false;};
         float get_floorZ(float, float);
         float get_ceilingZ(float, float);
+        int get_min_floor(float);
+        int get_max_ceiling(float);
         int wall_count(){
             int ret=0;
             for(auto i: loops)
@@ -446,6 +457,15 @@ class  unionSector : public Sector, public xSector {
         glm::vec3 get_rnd_pos(std::stringstream&);
         glm::vec3 getCenter();
         glm::vec2 getNNS(glm::vec2 pt, std::stringstream&);
+        bool isTriggerRoom()
+        {
+            bool ret=true;
+            if (loops.size() == 1)
+                for_loop(generic->marker, [&](unionWall _w) { if (_w.nextsector >=0) ret=false;});
+            else
+                ret=false;
+            return ret;
+        };
     private:
         std::map<std::string, int> to_num={{"Normal", 0}, {"MotionZ", 600},{"Slide", 616}, {"Rotate", 617},
                                            {"Slide Marked", 614}, {"Z Motion SPRITE", 602}, {"Step Rotate", 613}};
@@ -460,7 +480,8 @@ class  unionSprite : public Sprite, public xSprite {
         std::map<std::string, int> to_type={{"Ambient SFX", 710},{"BloodDrip Gen", 702}, {"WaterDrip Gen", 701},
         {"Player Start", 1}, {"Hidden Exploder", 459}, {"Toggle switch", 20}, {"1-Way switch", 21},
         {"Sector SFX", 709}, {"Player SFX", 711}, {"SFX Gen", 708}, {"Explode Object", 417}, {"Gib Object", 416},
-        {"Dude Spawn", 18}, {"Wall Crack", 408}, {"Upper stack",11}, {"Lower stack", 12}, {"Decoration", 0}};
+        {"Dude Spawn", 18}, {"Wall Crack", 408}, {"Upper stack",11}, {"Lower stack", 12}, {"Decoration", 0},
+        {"Upper water", 9},{"Lower water", 10}, {"Trigger Gen", 700}};
     public:
         void print(std::stringstream&);
         bool over=false;
@@ -533,7 +554,7 @@ private:
     std::map<int,std::string> map_descriptor={{-7, "Blood"}, {7, "Duke3D"}, {9, "EDuke32"}}; // ENUM ??
     int map_specification;
     void showInfo(std::stringstream&);
-    std::string mapIs; // for dirty hacks
+    int mapIs; // for dirty hacks
 
     Resources RS;
 
@@ -543,7 +564,7 @@ private:
     void makeSectorSFX(unionSprite& Sp);
     void makeRespawn(std::stringstream&);
     void makeExplodeAndGib();
-    std::vector<int> findAllSprites(std::vector<unionSector>::iterator the_sector);    
+    std::vector<int> findAllSprites(std::vector<unionSector>::iterator the_sector);
     std::vector<int> find_owner_sprites(int owner);
 
     int makeExplosiveSector(std::stringstream&);
@@ -560,6 +581,7 @@ private:
     int remove_wall(int, std::stringstream&, bool);
     int makeSDSS(std::stringstream&);     // Slide Doors Sprite System = SDSS;
     int slideROR(std::stringstream& msg);
+    int slideSector(int, int, int, int, std::set<int> , std::stringstream& msg);
     int get_wall_maplevel(int, int, int, std::stringstream&);
     int division_wall_maplevel(int, int, int, bool);
     int wall_subdivision_ror(int, int, std::stringstream&);
@@ -568,6 +590,9 @@ private:
     int makeStarTrackDoors(std::stringstream&);
     int makePlayerSFX(std::stringstream&);
     int makeStepRotate(std::stringstream&);
+    int getLocker(int, bool&, int&, std::stringstream&);
+    int insertSector(int sec, unionWall, unionWall, unionWall, unionWall, std::stringstream&);
+    int makeWaterSector(std::stringstream&);
 public:
     int read(char *filename, std::stringstream&);
     int read_text_file_to_string(const char*, std::string&, std::stringstream&);

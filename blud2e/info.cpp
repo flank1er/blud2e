@@ -29,6 +29,67 @@ void blud2e::printSector(int  num, bool blood, std::stringstream& msg)
     {
         if ( T.sectnum == num)  T.print(msg);
     };
+    /*
+    for (auto it=sV.begin(); it != sV.end(); it++)
+	{
+        // move data from Sector and xSector struct to unionSector
+		it->ceiling.texture_id = it->ceilingpicnum + 5120;
+		it->floor.texture_id = it->floorpicnum + 5120;
+		it->floor.z=(float)it->floorz * scale;
+		it->ceiling.z=(float)it->ceilingz * scale;
+        if (it->over)
+        {
+            it->offFloorZ=(float)it->offFloorZ*scale;
+            it->onFloorZ=(float)it->onFloorZ*scale;
+            it->offCeilZ=(float)it->offCeilZ*scale;
+            it->onCeilZ=(float)it->onCeilZ*scale;
+        };
+
+        it->tag=glm::ivec3(0, 0, -1);
+        it->firstWall=wV.begin()+it->wallptr;
+
+        it->originNumber=it;
+	};
+
+    for(int i=0; i<(int)sV.size();i++)
+    {   //calculate Z coordinate
+        //algorithm from map2stl.c by Ken Silverman
+        // where gis.z  is floor's Z, gis.w is ceiling's Z
+        sV.at(i).floor.delta=sV.at(i).ceiling.delta=glm::vec2(0.0f);
+        if (sV.at(i).floorstat&2)
+            sV.at(i).floor.delta.y=((float)sV.at(i).floorheinum)*(1.f/4096.f);
+         if (sV.at(i).ceilingstat&2)
+            sV.at(i).ceiling.delta.y=((float)sV.at(i).ceilingheinum)*(1.f/4096.f);
+
+        int p0=sV.at(i).wallptr;
+        int p1=wV.at(p0).point2;
+        float fx =((float)(wV.at(p1).y)/512.f)-((float)(wV.at(p0).y)/512.f);
+        float fy =((float)(wV.at(p0).x)/512.f)-((float)(wV.at(p1).x)/512.f);
+        float f=fx*fx+fy*fy;
+        if (f>0.f) f=1.f/(float)sqrt(f);
+        fx *=f; fy *=f;
+
+        sV.at(i).floor.delta.x=fx*sV.at(i).floor.delta.y;
+        sV.at(i).floor.delta.y *=fy;
+        sV.at(i).ceiling.delta.x=fx*sV.at(i).ceiling.delta.y;
+        sV.at(i).ceiling.delta.y *=fy;
+        for(int j=0, k=p0; j<sV.at(i).wallnum; j++, k++)
+        {
+                wV.at(k).gis.x=(float)(wV.at(k).x)/512.f;
+                wV.at(k).gis.y=(float)(wV.at(k).y)/512.f;
+
+                wV.at(k).gis.z=sV.at(i).get_floorZ(wV.at(k).gis.x, wV.at(k).gis.y);
+                wV.at(k).gis.w=sV.at(i).get_ceilingZ(wV.at(k).gis.x, wV.at(k).gis.y);
+
+        };
+    };
+
+    int minZ=sV.at(num).floorz;
+    msg << "minZ: " << minZ << std::endl;
+    int k=sV.at(num).wallptr;
+    float gisZ=wV.at(k).gis.z*512.f*16.f;
+    msg << "gisZ: " << gisZ << std::endl;
+    */
 };
 
 void Sprite::print(std::stringstream& msg) {
